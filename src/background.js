@@ -1,18 +1,35 @@
 /**
  * EdgeLang Background Script
- * Handles API communication, ModelMesh integration, and extension state
+ * Handles API communication using ModelMeshAdapter for AI routing
  */
+
+import { ModelMeshAdapter } from './modelmesh-adapter.js';
 
 // State
 let settings = {};
 let learnerProfile = {};
-let isProcessing = false;
+let modelMeshAdapter = null;
 
 // Initialize
 async function init() {
   await loadSettings();
   await loadLearnerProfile();
+  initModelMesh();
   updateIconState();
+}
+
+// Initialize ModelMesh adapter
+function initModelMesh() {
+  const apiKeys = settings.apiKeys || {};
+  
+  if (Object.keys(apiKeys).length === 0) {
+    console.log('EdgeLang: No API keys configured');
+    return;
+  }
+  
+  // Use imported ModelMesh adapter
+  modelMeshAdapter = ModelMeshAdapter.init(apiKeys);
+  console.log('EdgeLang: ModelMeshAdapter initialized');
 }
 
 // Load settings
@@ -44,7 +61,7 @@ async function loadLearnerProfile() {
 // Handle messages from content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   handleMessage(message).then(sendResponse);
-  return true; // Keep channel open for async response
+  return true;
 });
 
 async function handleMessage(message) {
@@ -70,6 +87,10 @@ async function handleMessage(message) {
     case 'runCalibration':
       return await runCalibration(message.answers);
       
+    case 'reinitModelMesh':
+      initModelMesh();
+      return { success: true };
+      
     default:
       return { error: 'Unknown action' };
   }
@@ -84,25 +105,62 @@ async function analyzePage(message) {
   try {
     const prompt = buildAnalysisPrompt(message);
     
-    const response = await callModelMesh({
-      prompt: prompt,
-      task: 'edge-detection',
-      max_tokens: 4000
-    });
-
-    // Parse response to extract cues
-    const cues = parseCuesFromResponse(response, message.mode);
+    let response;
     
+    if (modelMeshAdapter) {
+      // Use ModelMesh adapter
+      const result = await modelMeshAdapter.chatCompletionsCreate({
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3,
+        max_tokens: 4000
+      });
+      response = result.choices[0]?.message?.content || '';
+    } else {
+      // Fallback to manual implementation
+      response = await callManualAPI(prompt);
+    }
+
+    const cues = parseCuesFromResponse(response, message.mode);
     return { cues: cues };
+    
   } catch (error) {
     console.error('EdgeLang: Analysis error:', error);
     return { error: error.message };
   }
 }
 
+// Manual API fallback
+async function callManualAPI(prompt) {
+  const provider = selectProvider('edge-detection');
+  const apiKey = settings.apiKeys?.[provider];
+  
+  if (!apiKey) {
+    throw new Error(`No API key for ${provider}`);
+  }
+
+  const model = settings.modelSelection?.['edge-detection'] || getDefaultModel(provider);
+  const requestBody = buildProviderRequest(provider, model, prompt, 4000);
+
+  const response = await fetch(getProviderEndpoint(provider), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify(requestBody)
+  });
+
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return parseProviderResponse(provider, data);
+}
+
 // Build prompt for LLM analysis
 function buildAnalysisPrompt(message) {
-  const { text, language, learnerLevel, intensity, mode, resolvedItems } = message;
+  const { text, language, learnerLevel, intensity, mode } = message;
   
   const instructions = mode === 'passive' 
     ? `Analyze this ${language} text and identify ${intensity}% of words/phrases that would be appropriate for a ${learnerLevel} level English learner studying ${language}.`
@@ -127,7 +185,6 @@ Respond only with valid JSON array, no other text.`;
 // Parse cues from LLM response
 function parseCuesFromResponse(response, mode) {
   try {
-    // Try to extract JSON from response
     const jsonMatch = response.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
       console.warn('EdgeLang: No JSON found in response');
@@ -136,13 +193,12 @@ function parseCuesFromResponse(response, mode) {
     
     const cues = JSON.parse(jsonMatch[0]);
     
-    // Validate and clean cues
     return cues.filter(cue => 
       cue.text && 
       cue.translation && 
       cue.correctAnswer && 
       cue.distractors?.length >= 3
-    ).slice(0, 50); // Limit to 50 cues
+    ).slice(0, 50);
     
   } catch (error) {
     console.error('EdgeLang: Parse error:', error);
@@ -150,9 +206,8 @@ function parseCuesFromResponse(response, mode) {
   }
 }
 
-// Detect language using simple heuristics and LLM
+// Detect language
 async function detectLanguage(text) {
-  // Quick heuristic detection first
   const langPatterns = {
     'es': /[áéíóúñ¿¡]/i,
     'fr': /[àâçéèêëîïôûùüÿœæ]/i,
@@ -170,17 +225,16 @@ async function detectLanguage(text) {
     }
   }
 
-  // Use LLM for ambiguous cases
-  if (settings.apiKeysConfigured) {
+  if (settings.apiKeysConfigured && modelMeshAdapter) {
     try {
-      const prompt = `What language is this text? Just answer with the language code (e.g., "en", "es", "fr"):\n\n${text.substring(0, 500)}`;
+      const prompt = `What language is this? Just answer with the language code (en, es, fr, de, it, pt, zh, ja, ko):\n\n${text.substring(0, 500)}`;
       
-      const response = await callModelMesh({
-        prompt: prompt,
-        task: 'classification'
+      const result = await modelMeshAdapter.chatCompletionsCreate({
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 10
       });
 
-      const langMatch = response.match(/\b(en|es|fr|de|it|pt|zh|ja|ko|ru|ar)\b/i);
+      const langMatch = result.choices[0]?.message?.content?.match(/\b(en|es|fr|de|it|pt|zh|ja|ko)\b/i);
       if (langMatch) {
         return { language: langMatch[1].toLowerCase() };
       }
@@ -192,83 +246,6 @@ async function detectLanguage(text) {
   return { language: 'en' };
 }
 
-// Call ModelMesh for AI requests
-async function callModelMesh(request) {
-  const { prompt, task, max_tokens = 1000 } = request;
-
-  // Select provider based on task
-  const provider = selectProvider(task);
-  const apiKey = settings.apiKeys?.[provider];
-  
-  if (!apiKey) {
-    throw new Error(`No API key for ${provider}`);
-  }
-
-  const model = settings.modelSelection?.[task] || getDefaultModel(provider);
-
-  // Build request based on provider
-  const requestBody = buildProviderRequest(provider, model, prompt, max_tokens);
-
-  try {
-    const response = await fetch(getProviderEndpoint(provider), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify(requestBody)
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        // Quota exceeded, try next provider
-        return await callModelMeshWithFallback(request, provider);
-      }
-      throw new Error(`API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return parseProviderResponse(provider, data);
-
-  } catch (error) {
-    // Try fallback providers
-    return await callModelMeshWithFallback(request, provider);
-  }
-}
-
-// Call with fallback providers
-async function callModelMeshWithFallback(originalRequest, failedProvider) {
-  const providers = Object.keys(settings.apiKeys || {}).filter(p => p !== failedProvider);
-  
-  for (const provider of providers) {
-    try {
-      const apiKey = settings.apiKeys[provider];
-      const model = settings.modelSelection?.[originalRequest.task] || getDefaultModel(provider);
-      
-      const requestBody = buildProviderRequest(provider, model, originalRequest.prompt, originalRequest.max_tokens);
-      
-      const response = await fetch(getProviderEndpoint(provider), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return parseProviderResponse(provider, data);
-      }
-    } catch (e) {
-      continue;
-    }
-  }
-
-  throw new Error('All providers failed');
-}
-
-// Select provider based on task
 function selectProvider(task) {
   const taskProviderMap = {
     'edge-detection': 'openai',
@@ -280,16 +257,13 @@ function selectProvider(task) {
   
   const preferred = taskProviderMap[task] || 'openai';
   
-  // Check if preferred provider has API key
   if (settings.apiKeys?.[preferred]) {
     return preferred;
   }
   
-  // Fall back to first available
   return Object.keys(settings.apiKeys || {})[0] || 'openai';
 }
 
-// Get default model for provider
 function getDefaultModel(provider) {
   const defaults = {
     'openai': 'gpt-3.5-turbo',
@@ -300,42 +274,20 @@ function getDefaultModel(provider) {
   return defaults[provider] || 'gpt-3.5-turbo';
 }
 
-// Build provider-specific request
 function buildProviderRequest(provider, model, prompt, maxTokens) {
   const base = { max_tokens: maxTokens };
   
   switch (provider) {
     case 'openai':
     case 'groq':
-      return {
-        ...base,
-        model: model,
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3
-      };
-      
+      return { ...base, model, messages: [{ role: 'user', content: prompt }], temperature: 0.3 };
     case 'anthropic':
-      return {
-        ...base,
-        model: model,
-        messages: [{ role: 'user', content: prompt }]
-      };
-      
-    case 'google':
-      return {
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: maxTokens
-        }
-      };
-      
+      return { ...base, model, messages: [{ role: 'user', content: prompt }] };
     default:
-      return { ...base, model: model, prompt: prompt };
+      return { ...base, model, prompt };
   }
 }
 
-// Get provider endpoint
 function getProviderEndpoint(provider) {
   const endpoints = {
     'openai': 'https://api.openai.com/v1/chat/completions',
@@ -346,25 +298,18 @@ function getProviderEndpoint(provider) {
   return endpoints[provider];
 }
 
-// Parse provider response
 function parseProviderResponse(provider, data) {
   switch (provider) {
     case 'openai':
     case 'groq':
       return data.choices?.[0]?.message?.content || '';
-      
     case 'anthropic':
       return data.content?.[0]?.text || '';
-      
-    case 'google':
-      return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      
     default:
       return '';
   }
 }
 
-// Update statistics
 async function updateStats(isCorrect) {
   learnerProfile.stats = learnerProfile.stats || { totalAnswered: 0, correctAnswers: 0, streak: 0 };
   learnerProfile.stats.totalAnswered++;
@@ -377,18 +322,13 @@ async function updateStats(isCorrect) {
   learnerProfile.stats.lastActive = Date.now();
   
   await chrome.storage.local.set({ learnerProfile });
-  
   return { success: true };
 }
 
-// Run calibration
 async function runCalibration(answers) {
-  // Analyze answers to estimate level
   const correctCount = answers.filter(a => a.correct).length;
-  const total = answers.length;
-  const accuracy = correctCount / total;
+  const accuracy = correctCount / answers.length;
   
-  // Simple level estimation based on accuracy
   let level;
   if (accuracy >= 0.9) level = 'advanced';
   else if (accuracy >= 0.7) level = 'intermediate';
@@ -399,39 +339,24 @@ async function runCalibration(answers) {
   
   await chrome.storage.local.set({ 
     learnerProfile,
-    calibrationData: { 
-      level,
-      accuracy,
-      lastCalibrated: Date.now()
-    }
+    calibrationData: { level, accuracy, lastCalibrated: Date.now() }
   });
   
   return { level, accuracy };
 }
 
-// Update icon state
 function updateIconState() {
   const configured = settings.apiKeysConfigured;
   const enabled = settings.enabled !== false;
   
-  let iconPath = 'icons/';
-  if (!configured) {
-    iconPath += 'icon-gray'; // Not configured
-  } else if (!enabled) {
-    iconPath += 'icon-off'; // Disabled
-  } else {
-    iconPath += 'icon'; // Active
-  }
+  let status = 'active';
+  if (!configured) status = 'notconfigured';
+  else if (!enabled) status = 'disabled';
   
-  chrome.action.setIcon({
-    path: {
-      '16': `${iconPath}16.png`,
-      '48': `${iconPath}48.png`,
-      '128': `${iconPath}128.png`
-    }
+  chrome.action.setTitle({
+    title: `EdgeLang - ${status}`
   });
   
-  // Update badge
   if (!configured) {
     chrome.action.setBadgeText({ text: '!' });
     chrome.action.setBadgeBackgroundColor({ color: '#FFA500' });
@@ -443,25 +368,27 @@ function updateIconState() {
   }
 }
 
-// Listen for storage changes
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'sync') {
-    loadSettings();
+    loadSettings().then(() => {
+      const newKeys = changes.apiKeys?.newValue;
+      const oldKeys = changes.apiKeys?.oldValue;
+      if (JSON.stringify(newKeys) !== JSON.stringify(oldKeys)) {
+        initModelMesh();
+      }
+    });
   }
   if (area === 'local') {
     loadLearnerProfile();
   }
 });
 
-// Initialize on install
 chrome.runtime.onInstalled.addListener(() => {
   init();
 });
 
-// Initialize on startup
 chrome.runtime.onStartup.addListener(() => {
   init();
 });
 
-// Start
 init();

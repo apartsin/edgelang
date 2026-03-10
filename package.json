@@ -1,0 +1,12 @@
+{
+  "name": "edgelang",
+  "version": "0.1.0",
+  "description": "AI Chrome Extension for Vocabulary-at-the-Edge Language Learning",
+  "type": "module",
+  "dependencies": {
+    "@modelmesh/core": "^0.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
