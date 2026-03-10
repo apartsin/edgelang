@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EdgeLang | Learn Languages at the Edge of Every Page</title>
+  <meta name="description" content="EdgeLang is a Chrome extension that turns everyday reading into contextual language learning with subtle AI-powered page augmentation.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="page-shell topbar-inner">
+      <a class="brand" href="index.html">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>EdgeLang</span>
+      </a>
+      <nav class="nav-links" aria-label="Main navigation">
+        <a href="#install">Install</a>
+        <a href="#features">Features</a>
+        <a href="#docs">Docs</a>
+        <a href="manual.html">Manual</a>
+        <a href="https://modelmesh.tech/">ModelMesh</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <section class="hero">
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <span class="eyebrow">AI Browser Learning</span>
+          <h1>Learn Languages at the Edge of Every Page</h1>
+          <p>
+            EdgeLang turns ordinary browsing into contextual language practice. It reads the page with you,
+            finds words and phrases close to your level, and overlays lightweight prompts that keep you moving
+            through real content instead of pushing you into a separate study app.
+          </p>
+          <div class="cta-row">
+            <a class="btn btn-primary" href="#install">Install in Chrome</a>
+            <a class="btn btn-secondary" href="manual.html">Open User Manual</a>
+          </div>
+          <div class="pill-list">
+            <span class="pill">Passive and active modes</span>
+            <span class="pill">Multi-provider AI routing</span>
+            <span class="pill">Cue color and style controls</span>
+            <span class="pill">Calibration and progress tracking</span>
+          </div>
+        </div>
+        <div class="hero-card">
+          <img src="assets/banner.png" alt="Stylized editorial product banner for EdgeLang">
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="install">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Install in Minutes</h2>
+          <p class="section-intro">
+            EdgeLang is built as a Chrome Manifest V3 extension and loads directly from the repository.
+          </p>
+        </div>
+      </div>
+      <div class="grid-2">
+        <article class="content-card">
+          <h3>Load the extension</h3>
+          <ol>
+            <li>Open Chrome and go to <code>chrome://extensions</code>.</li>
+            <li>Turn on <code>Developer mode</code>.</li>
+            <li>Click <code>Load unpacked</code>.</li>
+            <li>Select the <code>src</code> folder in this repository.</li>
+          </ol>
+        </article>
+        <article class="content-card">
+          <h3>Complete setup</h3>
+          <ol>
+            <li>Open the EdgeLang toolbar popup.</li>
+            <li>Choose native and target languages.</li>
+            <li>Add at least one provider API key.</li>
+            <li>Validate the keys and run calibration.</li>
+          </ol>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="features">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Built for Real Reading</h2>
+          <p class="section-intro">
+            The product stays focused on one thing: helping you learn from the page you are already reading.
+          </p>
+        </div>
+      </div>
+      <div class="grid-3">
+        <article class="content-card">
+          <h3>Contextual cues</h3>
+          <p>Highlight words and phrases near your current level with underline, tint, dot, or border cues.</p>
+        </article>
+        <article class="content-card">
+          <h3>Two learning modes</h3>
+          <p>Use passive mode on target-language pages and active mode on native-language pages for recall practice.</p>
+        </article>
+        <article class="content-card">
+          <h3>Progress visibility</h3>
+          <p>Track streak, accuracy, resolved vocabulary, and calibration results from the popup and settings pages.</p>
+        </article>
+        <article class="content-card">
+          <h3>Provider flexibility</h3>
+          <p>Configure OpenAI, Anthropic, Gemini, Groq, and OpenRouter with model selection and key validation.</p>
+        </article>
+        <article class="content-card">
+          <h3>Fast feedback</h3>
+          <p>Get lightweight quiz popups with distractors, explanations, pronunciation, and follow-up examples.</p>
+        </article>
+        <article class="content-card">
+          <h3>Visible progress state</h3>
+          <p>The toolbar and popup now show when page analysis is processing so long-running LLM calls feel transparent.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Architecture Snapshot</h2>
+          <p class="section-intro">
+            EdgeLang uses browser-native extension pieces with AI routing inspired by ModelMesh.
+          </p>
+        </div>
+      </div>
+      <div class="grid-2">
+        <article class="content-card">
+          <h3>How the extension is structured</h3>
+          <pre><code>src/
+├── manifest.json
+├── background.js
+├── content.js
+├── popup.html / popup.js
+├── options.html / options.js
+├── styles/
+├── icons/
+└── _locales/</code></pre>
+        </article>
+        <article class="content-card">
+          <h3>Where ModelMesh fits</h3>
+          <p>
+            The project uses a browser-safe adapter layer around multi-provider AI routing so the extension can
+            survive provider failures, quota limits, and model selection changes without pushing that complexity into
+            every feature surface.
+          </p>
+          <p>
+            Learn more at
+            <a href="https://modelmesh.tech/">modelmesh.tech</a>.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="docs">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Documentation</h2>
+          <p class="section-intro">
+            Start with the manual if you want practical setup guidance. Dive into the deeper product documents for architecture and requirements.
+          </p>
+        </div>
+      </div>
+      <div class="doc-grid">
+        <article class="doc-card">
+          <div>
+            <h3>User Manual</h3>
+            <p>Setup, modes, toolbar controls, troubleshooting, and day-to-day use.</p>
+          </div>
+          <a href="manual.html">Open manual</a>
+        </article>
+        <article class="doc-card">
+          <div>
+            <h3>System Concepts</h3>
+            <p>The product vision, interaction model, pedagogical goals, and routing rationale.</p>
+          </div>
+          <a href="SystemConcepts.md">Read concepts</a>
+        </article>
+        <article class="doc-card">
+          <div>
+            <h3>Software Requirements</h3>
+            <p>Functional and non-functional requirements, project structure expectations, and acceptance criteria.</p>
+          </div>
+          <a href="SoftwareRequirements.md">Read requirements</a>
+        </article>
+        <article class="doc-card">
+          <div>
+            <h3>Test Plan</h3>
+            <p>Comprehensive test scope, feature coverage, and validation targets for the extension.</p>
+          </div>
+          <a href="TestPlan.md">Read test plan</a>
+        </article>
+        <article class="doc-card">
+          <div>
+            <h3>Project README</h3>
+            <p>The repository overview, install steps, and development entry point.</p>
+          </div>
+          <a href="../README.md">Open README</a>
+        </article>
+        <article class="doc-card">
+          <div>
+            <h3>Source Folder</h3>
+            <p>Load the extension from <code>src</code> when installing it in Chrome.</p>
+          </div>
+          <a href="../src/">Open source folder</a>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="page-shell">
+      <div class="footer-card">
+        <div><strong>EdgeLang</strong> is built by Sasha Apartsin.</div>
+        <div><a href="https://www.apartsin.com">www.apartsin.com</a></div>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

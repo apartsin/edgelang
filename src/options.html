@@ -268,6 +268,49 @@
     .notification.show {
       display: block;
     }
+
+    .status-panel {
+      margin-top: 16px;
+      display: none;
+      gap: 8px;
+      flex-direction: column;
+    }
+
+    .status-panel.show {
+      display: flex;
+    }
+
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #f8f8fb;
+      font-size: 13px;
+    }
+
+    .status-item.valid {
+      background: #eef9f0;
+      color: #1d6b35;
+    }
+
+    .status-item.invalid {
+      background: #fff2f0;
+      color: #9f2d20;
+    }
+
+    .model-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    @media (max-width: 720px) {
+      .model-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
@@ -278,31 +321,11 @@
     <div class="section-title">Language Settings</div>
     <div class="form-group">
       <label>Your Native Language</label>
-      <select id="nativeLanguage">
-        <option value="en">English</option>
-        <option value="es">Español</option>
-        <option value="fr">Français</option>
-        <option value="de">Deutsch</option>
-        <option value="it">Italiano</option>
-        <option value="pt">Português</option>
-        <option value="zh">中文</option>
-        <option value="ja">日本語</option>
-        <option value="ko">한국어</option>
-      </select>
+      <select id="nativeLanguage"></select>
     </div>
     <div class="form-group">
       <label>Target Language (to learn)</label>
-      <select id="targetLanguage">
-        <option value="es">Español</option>
-        <option value="en">English</option>
-        <option value="fr">Français</option>
-        <option value="de">Deutsch</option>
-        <option value="it">Italiano</option>
-        <option value="pt">Português</option>
-        <option value="zh">中文</option>
-        <option value="ja">日本語</option>
-        <option value="ko">한국어</option>
-      </select>
+      <select id="targetLanguage"></select>
     </div>
   </div>
   
@@ -324,6 +347,68 @@
       <input type="password" id="googleKey" placeholder="Your Google API key">
       <div class="input-hint">Enable Gemini API in Google Cloud Console</div>
     </div>
+    <div class="form-group">
+      <label>Groq API Key</label>
+      <input type="password" id="groqKey" placeholder="gsk_...">
+      <div class="input-hint">Optional low-latency fallback provider</div>
+    </div>
+    <div class="form-group">
+      <label>OpenRouter API Key</label>
+      <input type="password" id="openrouterKey" placeholder="sk-or-...">
+      <div class="input-hint">Optional multi-model gateway provider</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="validateKeys" type="button">Validate Keys</button>
+    </div>
+    <div class="status-panel" id="validationResults"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Model Selection</div>
+    <div class="input-hint" style="margin-bottom: 16px;">Choose the model EdgeLang should use for each configured provider.</div>
+    <div class="model-grid">
+      <div class="form-group">
+        <label>OpenAI Model</label>
+        <select id="model-openai">
+          <option value="gpt-4.1-mini">GPT-4.1 mini</option>
+          <option value="gpt-4.1">GPT-4.1</option>
+          <option value="gpt-4o-mini">GPT-4o mini</option>
+          <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Anthropic Model</label>
+        <select id="model-anthropic">
+          <option value="claude-3-5-haiku-latest">Claude 3.5 Haiku</option>
+          <option value="claude-3-5-sonnet-latest">Claude 3.5 Sonnet</option>
+          <option value="claude-3-haiku-20240307">Claude 3 Haiku</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Google Model</label>
+        <select id="model-google">
+          <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+          <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+          <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Groq Model</label>
+        <select id="model-groq">
+          <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile</option>
+          <option value="llama-3.1-70b-versatile">Llama 3.1 70B Versatile</option>
+          <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>OpenRouter Model</label>
+        <select id="model-openrouter">
+          <option value="google/gemini-2.0-flash-001">Gemini 2.0 Flash</option>
+          <option value="openai/gpt-4o-mini">GPT-4o mini</option>
+          <option value="anthropic/claude-3.5-haiku">Claude 3.5 Haiku</option>
+        </select>
+      </div>
+    </div>
   </div>
   
   <!-- Visual Cues -->
@@ -337,6 +422,11 @@
         <div class="radio-option" data-value="dot">Corner Dot</div>
         <div class="radio-option" data-value="border">Border</div>
       </div>
+    </div>
+    <div class="form-group">
+      <label>Highlight Color</label>
+      <input type="color" id="highlightColor" value="#f2a7a7">
+      <div class="input-hint">Used for cue underline, tint, border, or dot. Default is light red.</div>
     </div>
     <div class="slider-group">
       <div class="slider-header">
@@ -353,6 +443,16 @@
       </div>
       <input type="range" id="recallIntensity" min="0" max="100" value="10">
       <div class="input-hint">Probability of showing previously learned words</div>
+    </div>
+    <div class="form-group">
+      <label>Multiple Choice Options</label>
+      <select id="multipleChoiceCount">
+        <option value="3">3 options</option>
+        <option value="4">4 options</option>
+        <option value="5">5 options</option>
+        <option value="6">6 options</option>
+      </select>
+      <div class="input-hint">How many answers to show in each popup quiz</div>
     </div>
   </div>
   
@@ -377,6 +477,20 @@
       <label>Audio Pronunciation</label>
       <label class="toggle">
         <input type="checkbox" id="audioEnabled">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="toggle-group">
+      <label>Auto-start calibration after setup</label>
+      <label class="toggle">
+        <input type="checkbox" id="autoStartCalibration" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="toggle-group">
+      <label>Auto-detect page language</label>
+      <label class="toggle">
+        <input type="checkbox" id="autoDetectLanguage" checked>
         <span class="toggle-slider"></span>
       </label>
     </div>
@@ -407,7 +521,74 @@
     <div class="section-title">Data Management</div>
     <div class="btn-row">
       <button class="btn btn-secondary" id="exportData">Export Data</button>
+      <button class="btn btn-secondary" id="exportVocabulary">Export Vocabulary</button>
       <button class="btn btn-danger" id="clearData">Clear All Data</button>
+    </div>
+  </div>
+
+  <div class="section" id="calibrationSection">
+    <div class="section-title">Calibration</div>
+    <div class="form-group">
+      <label>Self-assessed starting level</label>
+      <select id="selfAssessedLevel">
+        <option value="novice">Novice</option>
+        <option value="beginner">Beginner</option>
+        <option value="intermediate" selected>Intermediate</option>
+        <option value="advanced">Advanced</option>
+      </select>
+      <div class="input-hint">Used to seed the 10-question calibration round.</div>
+    </div>
+    <div id="calibrationIntro">
+      <div class="input-hint">Calibration runs 10 mixed passive and active questions, then estimates your current level.</div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="startCalibration">Start Calibration</button>
+      </div>
+    </div>
+    <div id="calibrationWizard" style="display:none;">
+      <div class="form-group">
+        <label id="calibrationProgress">Question 1 of 10</label>
+        <div id="calibrationType" class="input-hint"></div>
+      </div>
+      <div class="form-group">
+        <div id="calibrationPrompt" style="font-size:16px; line-height:1.5;"></div>
+      </div>
+      <div class="radio-group" id="calibrationChoices" style="display:grid; grid-template-columns:1fr 1fr;"></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="stopCalibration">Stop</button>
+      </div>
+    </div>
+    <div id="calibrationResult" style="display:none;">
+      <div class="form-group">
+        <label id="calibrationLevel">Level</label>
+        <div id="calibrationSummary" class="input-hint"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="continueCalibration">Continue Another Round</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="statisticsSection">
+    <div class="section-title">Learning Statistics</div>
+    <div class="stats-grid" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:12px;">
+      <div class="site-tag" style="justify-content:center; padding:12px;">
+        Mastered: <strong id="statsMastered" style="margin-left:6px;">0</strong>
+      </div>
+      <div class="site-tag" style="justify-content:center; padding:12px;">
+        Streak: <strong id="statsStreak" style="margin-left:6px;">0</strong>
+      </div>
+      <div class="site-tag" style="justify-content:center; padding:12px;">
+        Accuracy: <strong id="statsAccuracy" style="margin-left:6px;">0%</strong>
+      </div>
+      <div class="site-tag" style="justify-content:center; padding:12px;">
+        Attempts: <strong id="statsAttempts" style="margin-left:6px;">0</strong>
+      </div>
+      <div class="site-tag" style="justify-content:center; padding:12px;">
+        Words: <strong id="statsWords" style="margin-left:6px;">0</strong>
+      </div>
+      <div class="site-tag" style="justify-content:center; padding:12px;">
+        Last Active: <strong id="statsLastActive" style="margin-left:6px;">Never</strong>
+      </div>
     </div>
   </div>
   

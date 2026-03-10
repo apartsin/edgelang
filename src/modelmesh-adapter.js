@@ -24,7 +24,7 @@ const ModelMeshAdapter = {
     
     for (const config of providerConfigs) {
       if (config.key) {
-        this.providers[config.name] = { ...config, active: true };
+        this.providers[config.name] = { ...config, apiKey: config.key, active: true };
         this.providerPool.push(config.name);
       }
     }
@@ -43,14 +43,14 @@ const ModelMeshAdapter = {
   
   // Create chat completion with provider pool routing
   async chatCompletionsCreate(params) {
-    const { messages, temperature = 0.3, max_tokens = 1000 } = params;
+    const { messages, temperature = 0.3, max_tokens = 1000, provider: preferredProvider, model } = params;
     const prompt = messages[0]?.content || '';
-    
     const triedProviders = new Set();
-    const maxAttempts = Object.keys(this.providers).length;
-    
-    for (let i = 0; i < maxAttempts; i++) {
-      const providerName = this.getNextProvider();
+    const providerQueue = preferredProvider
+      ? [preferredProvider, ...this.providerPool.filter(name => name !== preferredProvider)]
+      : [...this.providerPool];
+
+    for (const providerName of providerQueue) {
       if (!providerName || triedProviders.has(providerName)) continue;
       triedProviders.add(providerName);
       
@@ -59,7 +59,7 @@ const ModelMeshAdapter = {
       
       try {
         console.log(`ModelMeshAdapter: Trying provider ${providerName}`);
-        const response = await this.callProvider(providerName, prompt, temperature, max_tokens);
+        const response = await this.callProvider(providerName, prompt, temperature, max_tokens, model);
         
         return {
           choices: [{
@@ -86,34 +86,30 @@ const ModelMeshAdapter = {
   },
   
   // Call specific provider
-  async callProvider(provider, prompt, temperature, maxTokens) {
+  async callProvider(provider, prompt, temperature, maxTokens, modelOverride) {
     const config = this.providers[provider];
     if (!config) throw new Error(`Provider ${provider} not configured`);
+    const model = modelOverride || config.model;
     
     switch (provider) {
       case 'openai':
       case 'groq':
-        return this.callOpenAI(provider, config.apiKey, prompt, temperature, maxTokens);
+        return this.callOpenAI(provider, config.apiKey, prompt, temperature, maxTokens, model);
       case 'anthropic':
-        return this.callAnthropic(config.apiKey, prompt, temperature, maxTokens);
+        return this.callAnthropic(config.apiKey, prompt, temperature, maxTokens, model);
       case 'google':
-        return this.callGoogle(config.apiKey, prompt, temperature, maxTokens);
+        return this.callGoogle(config.apiKey, prompt, temperature, maxTokens, model);
       case 'openrouter':
-        return this.callOpenRouter(config.apiKey, prompt, temperature, maxTokens);
+        return this.callOpenRouter(config.apiKey, prompt, temperature, maxTokens, model);
       default:
         throw new Error(`Unknown provider: ${provider}`);
     }
   },
   
-  async callOpenAI(provider, apiKey, prompt, temperature, maxTokens) {
+  async callOpenAI(provider, apiKey, prompt, temperature, maxTokens, model) {
     const endpoints = {
       openai: 'https://api.openai.com/v1/chat/completions',
       groq: 'https://api.groq.com/openai/v1/chat/completions'
-    };
-    
-    const models = {
-      openai: 'gpt-3.5-turbo',
-      groq: 'llama-3.1-70b-versatile'
     };
     
     const response = await fetch(endpoints[provider], {
@@ -123,7 +119,7 @@ const ModelMeshAdapter = {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: models[provider],
+        model,
         messages: [{ role: 'user', content: prompt }],
         temperature,
         max_tokens: maxTokens
@@ -139,7 +135,7 @@ const ModelMeshAdapter = {
     return data.choices[0]?.message?.content || '';
   },
   
-  async callAnthropic(apiKey, prompt, temperature, maxTokens) {
+  async callAnthropic(apiKey, prompt, temperature, maxTokens, model) {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -148,7 +144,7 @@ const ModelMeshAdapter = {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-3-haiku-20240307',
+        model,
         messages: [{ role: 'user', content: prompt }],
         temperature,
         max_tokens: maxTokens
@@ -164,8 +160,8 @@ const ModelMeshAdapter = {
     return data.content[0]?.text || '';
   },
   
-  async callGoogle(apiKey, prompt, temperature, maxTokens) {
-    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + apiKey, {
+  async callGoogle(apiKey, prompt, temperature, maxTokens, model) {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -185,6 +181,32 @@ const ModelMeshAdapter = {
     
     const data = await response.json();
     return data.candidates[0]?.content?.parts[0]?.text || '';
+  },
+
+  async callOpenRouter(apiKey, prompt, temperature, maxTokens, model) {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': 'https://edgelang.dev',
+        'X-Title': 'EdgeLang'
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: prompt }],
+        temperature,
+        max_tokens: maxTokens
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error?.message || `HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || '';
   },
   
   // Get provider status

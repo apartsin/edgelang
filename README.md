@@ -1,75 +1,115 @@
-# EdgeLang
+# EdgeLang: Learn Languages at the Edge of Every Page
 
-AI Chrome Extension for Vocabulary-at-the-Edge Language Learning
+![EdgeLang banner](docs/assets/banner.png)
 
-## Overview
+EdgeLang is a Chrome extension that turns ordinary browsing into contextual language practice. It scans the page you are reading, identifies words and phrases close to your current level, and adds lightweight interactive cues so learning happens inside real content instead of a separate app.
 
-EdgeLang transforms web browsing into a contextual language learning experience by identifying vocabulary and phrases at the learner's competence boundary and presenting them as interactive micro-learning opportunities.
+The extension supports passive reading practice, active recall, multiple AI providers, progress tracking, calibration, configurable cue styling, and browser-first routing through [ModelMesh](https://modelmesh.tech/).
 
-## Features
+## Why EdgeLang
 
-- **Edge-of-Ability Detection** - AI-powered identification of learnable vocabulary
-- **Dual Learning Modes** - Passive (reading) and Active (translation) practice
-- **Phrase-Aware Learning** - Multi-word expressions, idioms, collocations
-- **Adaptive Personalization** - Learns from learner responses and progress
-- **Gamification** - Streaks, progress tracking, motivational feedback
-- **Multi-Provider AI** - Routes through ModelMesh for resilience
-- **Audio Pronunciation** - TTS support via Azure/Google
+- Learn from real pages instead of artificial drills
+- Switch between passive and active language practice
+- Route AI requests across providers for resilience
+- Keep the experience lightweight with subtle on-page augmentation
+- Track progress, calibration results, streaks, and resolved vocabulary
+
+## Quick Links
+
+- [User Manual](docs/USER_MANUAL.md)
+- [System Concepts](docs/SystemConcepts.md)
+- [Software Requirements](docs/SoftwareRequirements.md)
+- [Test Plan](docs/TestPlan.md)
+- [ModelMesh Project](https://modelmesh.tech/)
 
 ## Installation
 
-1. Clone this repository
-2. Open Chrome and navigate to `chrome://extensions`
-3. Enable "Developer mode"
-4. Click "Load unpacked"
-5. Select the `src` directory
+### Load the extension in Chrome
 
-## Configuration
+1. Clone or download this repository.
+2. Open Chrome and go to `chrome://extensions`.
+3. Enable `Developer mode`.
+4. Click `Load unpacked`.
+5. Select the [src](src) folder, not the repository root.
 
-1. Click the EdgeLang icon in the toolbar
-2. Click "Settings"
-3. Configure your native and target languages
-4. Enter API keys for at least one AI provider:
-   - OpenAI (GPT-3.5/GPT-4)
-   - Anthropic (Claude)
-   - Google (Gemini)
-5. Run the calibration wizard to set your level
-6. Start browsing!
+### First-time setup
+
+1. Click the EdgeLang toolbar icon.
+2. Open `Settings`.
+3. Choose your native language and target language.
+4. Add at least one provider API key.
+5. Validate the keys from the options page.
+6. Run calibration if prompted.
+7. Open a content-heavy page and wait for the processing indicator.
+
+## How It Works
+
+EdgeLang uses a content script to extract visible page text, a background service worker to coordinate AI analysis, and popup/options pages for controls and configuration. AI routing is handled through a local adapter layer designed around ModelMesh-style provider selection and failover.
+
+When a page is being analyzed, the extension now exposes progress through the toolbar state and popup status so the experience is less opaque while the model is working.
+
+## Features
+
+- Adaptive cue generation based on the page and learner level
+- Passive and active practice modes
+- Site blacklist and whitelist controls
+- Calibration flow with saved progress
+- Provider and model selection
+- API key validation
+- Configurable highlight color and cue style
+- Toolbar processing indicator and blocker reasons
+- Progress statistics and vocabulary export
 
 ## Development
 
-### Project Structure
+### Project structure
 
-```
+```text
 src/
-├── manifest.json        # Extension manifest (MV3)
-├── background.js       # Background service worker
-├── content.js          # Content script (injected into pages)
-├── popup.html/js       # Toolbar popup
-├── options.html/js     # Settings page
+├── manifest.json
+├── background.js
+├── content.js
+├── popup.html
+├── popup.js
+├── options.html
+├── options.js
 ├── styles/
-│   └── cue.css        # Visual cue styles
-tests/
-├── test-runner.html   # Browser-based test runner
-└── test-suite.js      # Test cases
+├── icons/
+└── _locales/
+docs/
+├── USER_MANUAL.md
+├── SystemConcepts.md
+├── SoftwareRequirements.md
+└── TestPlan.md
+scripts/
+└── generate_readme_banner.py
 ```
 
-### Running Tests
+### Run tests
 
-Open `tests/test-runner.html` in a browser to run the test suite.
+```bash
+npm test
+```
 
-## Tech Stack
+### Regenerate the README banner
 
-- Chrome Extension API (Manifest V3)
-- JavaScript (ES6+)
-- ModelMesh TypeScript Library
-- Chrome Storage API
+The banner was generated with Gemini using the local environment key.
 
-## Requirements
+```bash
+python scripts/generate_readme_banner.py
+```
 
-- Chrome Browser (latest 2 versions)
-- At least one AI provider API key
+## Notes
+
+- Chrome must load the unpacked extension from [src](src).
+- The extension needs at least one configured AI provider before it can augment pages.
+- If a page shows no cues, open the popup to see the current blocker reason.
 
 ## License
 
 MIT
+
+## Author
+
+Sasha Apartsin  
+[www.apartsin.com](https://www.apartsin.com)

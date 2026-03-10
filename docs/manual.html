@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EdgeLang User Manual</title>
+  <meta name="description" content="User manual for installing, configuring, and troubleshooting the EdgeLang Chrome extension.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="page-shell topbar-inner">
+      <a class="brand" href="index.html">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>EdgeLang</span>
+      </a>
+      <nav class="nav-links" aria-label="Manual navigation">
+        <a href="index.html">Overview</a>
+        <a href="#install">Install</a>
+        <a href="#modes">Modes</a>
+        <a href="#troubleshooting">Troubleshooting</a>
+        <a href="https://modelmesh.tech/">ModelMesh</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <section class="manual-hero">
+      <article class="content-card">
+        <span class="eyebrow">User Manual</span>
+        <h1>Set Up EdgeLang and Keep It Moving</h1>
+        <p class="section-intro">
+          This manual covers installation, configuration, everyday use, and the quickest way to diagnose why cues are or are not showing up on the page.
+        </p>
+      </article>
+    </section>
+
+    <section class="section">
+      <div class="manual-grid">
+        <aside class="content-card toc">
+          <h3>Contents</h3>
+          <ul>
+            <li><a href="#install">Install</a></li>
+            <li><a href="#setup">Initial setup</a></li>
+            <li><a href="#modes">Modes</a></li>
+            <li><a href="#toolbar">Toolbar and popup</a></li>
+            <li><a href="#visuals">Visual cues</a></li>
+            <li><a href="#languages">Language settings</a></li>
+            <li><a href="#providers">Provider configuration</a></li>
+            <li><a href="#troubleshooting">Troubleshooting</a></li>
+          </ul>
+        </aside>
+
+        <div class="manual-stack">
+          <article class="manual-block" id="install">
+            <h2>Install</h2>
+            <ol>
+              <li>Open Chrome and go to <code>chrome://extensions</code>.</li>
+              <li>Enable <code>Developer mode</code>.</li>
+              <li>Click <code>Load unpacked</code>.</li>
+              <li>Select the repository <code>src</code> folder.</li>
+            </ol>
+            <p>If Chrome says there is no manifest, you selected the repository root instead of <code>src</code>.</p>
+          </article>
+
+          <article class="manual-block" id="setup">
+            <h2>Initial Setup</h2>
+            <ol>
+              <li>Open the EdgeLang toolbar popup.</li>
+              <li>Go to <code>Settings</code>.</li>
+              <li>Select your native and target languages.</li>
+              <li>Add one or more provider API keys.</li>
+              <li>Click <code>Validate Keys</code>.</li>
+              <li>Choose models if you want to override defaults.</li>
+              <li>Run calibration.</li>
+            </ol>
+          </article>
+
+          <article class="manual-block" id="modes">
+            <h2>Modes</h2>
+            <ul>
+              <li><strong>Auto:</strong> chooses passive or active mode from the page language.</li>
+              <li><strong>Passive:</strong> use this on target-language pages for comprehension practice.</li>
+              <li><strong>Active:</strong> use this on native-language pages for recall and translation practice.</li>
+            </ul>
+          </article>
+
+          <article class="manual-block" id="toolbar">
+            <h2>Toolbar and Popup</h2>
+            <p>The popup gives you fast access to enable or disable the extension, switch modes, pause learning, manage the current site, open statistics, and launch settings.</p>
+            <p>While a page is being analyzed, the toolbar shows a flashing badge dot and the popup displays <code>Processing...</code>.</p>
+            <p>If no cues appear, the popup also shows a blocker reason such as <code>api_keys_not_configured</code>, <code>site_disabled</code>, <code>paused</code>, or <code>insufficient_text</code>.</p>
+          </article>
+
+          <article class="manual-block" id="visuals">
+            <h2>Visual Cue Settings</h2>
+            <p>EdgeLang supports several cue styles and a configurable highlight color.</p>
+            <ul>
+              <li>Underline</li>
+              <li>Background tint</li>
+              <li>Corner dot</li>
+              <li>Border</li>
+              <li>Custom highlight color, defaulting to light red</li>
+            </ul>
+          </article>
+
+          <article class="manual-block" id="languages">
+            <h2>Language Settings</h2>
+            <p>Both native and target selectors include a broad supported list including English, Russian, Hebrew, Spanish, French, German, Arabic, Chinese, Japanese, Korean, Hindi, Ukrainian, Thai, and more.</p>
+          </article>
+
+          <article class="manual-block" id="providers">
+            <h2>Provider Configuration</h2>
+            <p>EdgeLang currently supports multiple AI backends and model selection from the options page.</p>
+            <ul>
+              <li>OpenAI</li>
+              <li>Anthropic</li>
+              <li>Google Gemini</li>
+              <li>Groq</li>
+              <li>OpenRouter</li>
+            </ul>
+            <p>The project uses a browser-safe routing layer inspired by <a href="https://modelmesh.tech/">ModelMesh</a> so provider failover and selection stay manageable inside the extension.</p>
+          </article>
+
+          <article class="manual-block" id="troubleshooting">
+            <h2>Troubleshooting</h2>
+            <ul>
+              <li>Make sure at least one AI provider key is configured.</li>
+              <li>Check that the current site is not blocked by the blacklist or missing from the whitelist.</li>
+              <li>Confirm the extension is not paused.</li>
+              <li>Wait for dynamic sites to finish hydrating if you just opened a page like a news site.</li>
+              <li>Use the popup blocker reason if the page still shows no cues.</li>
+            </ul>
+            <p>For the Markdown version of this document, see <a href="USER_MANUAL.md">USER_MANUAL.md</a>.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="page-shell">
+      <div class="footer-card">
+        <div><strong>EdgeLang Manual</strong> by Sasha Apartsin.</div>
+        <div><a href="https://www.apartsin.com">www.apartsin.com</a></div>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

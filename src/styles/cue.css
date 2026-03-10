@@ -5,27 +5,30 @@
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
+  --edgelang-cue-color: #f2a7a7;
+  --edgelang-cue-soft: rgba(242, 167, 167, 0.18);
+  --edgelang-cue-hover: rgba(242, 167, 167, 0.28);
 }
 
 /* Underline style (default) */
 .edgelang-cue-underline {
-  border-bottom: 2px dotted #667eea;
+  border-bottom: 2px dotted var(--edgelang-cue-color);
 }
 
 .edgelang-cue-underline:hover {
   border-bottom-style: solid;
-  background-color: rgba(102, 126, 234, 0.1);
+  background-color: var(--edgelang-cue-soft);
 }
 
 /* Background tint style */
 .edgelang-cue-background {
-  background-color: rgba(102, 126, 234, 0.15);
+  background-color: var(--edgelang-cue-soft);
   border-radius: 3px;
   padding: 0 2px;
 }
 
 .edgelang-cue-background:hover {
-  background-color: rgba(102, 126, 234, 0.25);
+  background-color: var(--edgelang-cue-hover);
 }
 
 /* Corner dot style */
@@ -36,19 +39,19 @@
   right: 0;
   width: 6px;
   height: 6px;
-  background-color: #667eea;
+  background-color: var(--edgelang-cue-color);
   border-radius: 50%;
 }
 
 /* Border style */
 .edgelang-cue-border {
-  border: 1px solid #667eea;
+  border: 1px solid var(--edgelang-cue-color);
   border-radius: 3px;
   padding: 0 3px;
 }
 
 .edgelang-cue-border:hover {
-  background-color: rgba(102, 126, 234, 0.1);
+  background-color: var(--edgelang-cue-soft);
 }
 
 /* Cursor change */
@@ -210,6 +213,38 @@
 .edgelang-feedback-text em {
   font-style: italic;
   color: #2e7d32;
+}
+
+.edgelang-examples-btn {
+  margin-top: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #cdd5ff;
+  border-radius: 8px;
+  background: #f5f7ff;
+  color: #4455aa;
+  cursor: pointer;
+}
+
+.edgelang-audio-btn {
+  margin-top: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d7d7d7;
+  border-radius: 8px;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+}
+
+.edgelang-example {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f8f8fb;
+  color: #444;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 /* Animation for correct answer */

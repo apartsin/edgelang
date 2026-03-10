@@ -37,18 +37,20 @@ test.describe('EdgeLang Extension - Verification', () => {
     const bgContent = fs.readFileSync(bgPath, 'utf-8');
     
     console.log('\nModelMesh Integration:');
-    console.log('  ✓ Imports ModelMeshAdapter');
-    console.log('  ✓ Calls chatCompletionsCreate');
-    console.log('  ✓ Has provider pool');
+    console.log('  ✓ Imports the browser-safe ModelMesh adapter');
+    console.log('  ✓ Uses adapter client methods for API calls');
+    console.log('  ✓ Has provider configuration');
     console.log('  ✓ Has OpenRouter support');
     
     expect(bgContent).toContain('ModelMeshAdapter');
     expect(bgContent).toContain('chatCompletionsCreate');
+    expect(bgContent).not.toContain("from './modelmesh-dist/browser.js'");
+    expect(bgContent).toContain('modelMeshClient');
     
     await browser2.close();
     
     console.log('\n=== Extension Verified ===');
-    console.log('The extension IS loaded in Chrome with ModelMesh.');
+    console.log('The extension IS loaded in Chrome with the browser-safe adapter.');
   });
 
 });

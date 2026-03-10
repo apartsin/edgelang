@@ -29,6 +29,8 @@ test.describe('EdgeLang Extension - Real Chrome Test', () => {
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
     expect(manifest.manifest_version).toBe(3);
     expect(manifest.name).toBe('EdgeLang');
+    expect(manifest.icons['16']).toBe('icons/icon-16.png');
+    expect(manifest.action.default_icon['32']).toBe('icons/icon-32.png');
     
     // Verify background script exists
     const bgPath = path.join(EXTENSION_PATH, 'background.js');
@@ -41,6 +43,11 @@ test.describe('EdgeLang Extension - Real Chrome Test', () => {
     // Verify ModelMesh adapter exists
     const adapterPath = path.join(EXTENSION_PATH, 'modelmesh-adapter.js');
     expect(fs.existsSync(adapterPath)).toBe(true);
+
+    const icon16Path = path.join(EXTENSION_PATH, 'icons', 'icon-16.png');
+    const icon128Path = path.join(EXTENSION_PATH, 'icons', 'icon-128.png');
+    expect(fs.existsSync(icon16Path)).toBe(true);
+    expect(fs.existsSync(icon128Path)).toBe(true);
     
     console.log('✓ All required extension files exist');
     console.log('✓ Manifest V3 validated');
@@ -51,13 +58,15 @@ test.describe('EdgeLang Extension - Real Chrome Test', () => {
     const bgPath = path.join(EXTENSION_PATH, 'background.js');
     const bgContent = fs.readFileSync(bgPath, 'utf-8');
     
-    // Check that background.js imports ModelMeshAdapter
-    expect(bgContent).toContain("import { ModelMeshAdapter } from './modelmesh-adapter.js'");
+    // Check that background.js imports the browser-safe adapter
+    expect(bgContent).toContain("import { ModelMeshAdapter }");
+    expect(bgContent).toContain("from './modelmesh-adapter.js'");
     expect(bgContent).toContain('ModelMeshAdapter.init');
-    expect(bgContent).toContain('chatCompletionsCreate');
+    expect(bgContent).toContain('modelMeshClient');
+    expect(bgContent).not.toContain("from './modelmesh-dist/browser.js'");
     
-    console.log('✓ background.js imports ModelMeshAdapter');
-    console.log('✓ ModelMeshAdapter.init() is called');
+    console.log('✓ background.js imports the browser-safe adapter');
+    console.log('✓ ModelMeshAdapter.init() is used');
   });
 
   test('ModelMesh adapter has provider pool routing', async () => {
@@ -70,6 +79,7 @@ test.describe('EdgeLang Extension - Real Chrome Test', () => {
     expect(adapterContent).toContain('getNextProvider');
     expect(adapterContent).toContain('openrouter');
     expect(adapterContent).toContain('callOpenRouter');
+    expect(adapterContent).toContain('apiKey: config.key');
     
     console.log('✓ Provider pool implemented');
     console.log('✓ OpenRouter support included');
@@ -90,10 +100,10 @@ test.describe('EdgeLang Extension - Real Chrome Test', () => {
     const bg = fs.readFileSync(bgPath, 'utf-8');
     
     expect(bg).toContain("case 'analyzePage'");
-    expect(bg).toContain('modelMeshAdapter.chatCompletionsCreate');
+    expect(bg).toContain('modelMeshClient.chatCompletionsCreate');
     
     console.log('✓ Content script sends analyzePage to background');
-    console.log('✓ Background calls ModelMeshAdapter.chatCompletionsCreate');
+    console.log('✓ Background calls the ModelMesh adapter client');
     console.log('✓ Full flow: page → content → background → ModelMesh → response → cues');
   });
 
@@ -156,9 +166,10 @@ test.describe('EdgeLang - Simulated Full Flow', () => {
     
     // Verify the full routing chain
     expect(adapterContent).toContain('async chatCompletionsCreate');
-    expect(adapterContent).toContain('for (let i = 0; i < maxAttempts; i++)');
+    expect(adapterContent).toContain('const providerQueue = preferredProvider');
     expect(adapterContent).toContain('triedProviders');
     expect(adapterContent).toContain('provider.active = false');
+    expect(adapterContent).toContain('modelOverride || config.model');
     
     // Check failover logic
     expect(adapterContent).toContain('if (error.status === 429');

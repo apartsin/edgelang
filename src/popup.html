@@ -59,6 +59,17 @@
     .status-active { background: #4CAF50; }
     .status-off { background: #888; }
     .status-warning { background: #FFA500; }
+    .status-processing {
+      background: #2BCB7A;
+      box-shadow: 0 0 0 rgba(43, 203, 122, 0.45);
+      animation: pulseDot 0.9s ease-in-out infinite;
+    }
+
+    @keyframes pulseDot {
+      0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(43, 203, 122, 0.45); }
+      70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(43, 203, 122, 0); }
+      100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(43, 203, 122, 0); }
+    }
     
     .toggle-row {
       display: flex;
@@ -227,6 +238,10 @@
     <div class="status-indicator" id="statusIndicator"></div>
     <span id="statusText">Loading...</span>
   </div>
+
+  <div class="status" style="margin-top: -4px;">
+    <span style="font-size: 12px; color: #666;" id="pageMeta">Detecting page context...</span>
+  </div>
   
   <div class="toggle-row">
     <span class="toggle-label">Extension Enabled</span>
@@ -237,8 +252,17 @@
   </div>
   
   <div class="mode-selector">
+    <button class="mode-btn" id="autoBtn">Auto</button>
     <button class="mode-btn active" id="passiveBtn">Passive</button>
-    <button class="modeBtn" id="activeBtn">Active</button>
+    <button class="mode-btn" id="activeBtn">Active</button>
+  </div>
+
+  <div class="toggle-row">
+    <span class="toggle-label">Pause Learning</span>
+    <label class="toggle">
+      <input type="checkbox" id="pauseToggle">
+      <span class="toggle-slider"></span>
+    </label>
   </div>
   
   <div class="stats">
@@ -264,7 +288,9 @@
   </div>
   
   <div class="quick-actions">
+    <button class="action-btn secondary" id="toggleSite">Loading site rule...</button>
     <button class="action-btn" id="runCalibration">Run Calibration</button>
+    <button class="action-btn secondary" id="viewStats">View Statistics</button>
     <button class="action-btn secondary" id="openOptions">Settings</button>
   </div>
   
