@@ -215,9 +215,18 @@ The system remembers prior success, repeated errors, and resolved items to avoid
 
 The learner can request extra examples and short usage notes to support durable understanding.
 
-### 9. Multi-provider AI execution
+### 22. Multi-provider AI execution
 
 The extension uses ModelMesh TypeScript library to route pedagogical requests across multiple AI providers directly from the browser, with automatic failover and quota management.
+
+When all configured providers have exhausted their quotas:
+
+- The extension automatically disables all visual cues and interaction
+- Toolbar icon shows a "quota exhausted" indicator
+- A clear message informs the user that the daily quota limit has been reached
+- The extension remains disabled until the next browser session (when the page is reloaded after a new day or user restarts the browser)
+
+This prevents frustration from repeated failed API calls and manages expectations during quota limits.
 
 ### 10. Cost- and reliability-aware inference
 
@@ -225,7 +234,7 @@ The product can assign different subtasks to different models depending on speed
 
 ### 11. Proficiency calibration wizard
 
-Before or alongside regular browsing, the system offers a structured assessment flow that quickly narrows down the learner's competence boundary. The wizard presents a sequence of 10 multiple-choice questions drawn from the target language, mixing passive (recognition) and active (recall) formats. Each question targets vocabulary and phrases at different difficulty bands. The LLM generates questions on-the-fly based on the learner's previous answer history (if available) to efficiently narrow down the competence boundary. After completing a round of 10, the system displays a provisional level estimate and asks the learner whether they want to continue for greater precision. This iterative refinement continues until the learner is satisfied or the system reaches high confidence. The wizard can also resume from a partial profile if the learner has prior history, allowing for quick updates rather than starting over.
+Before or alongside regular browsing, the system offers a structured assessment flow that quickly narrows down the learner's competence boundary. The wizard presents a sequence of 10 multiple-choice questions drawn from the target language, mixing passive (recognition) and active (recall) formats. Each question targets vocabulary and phrases at different difficulty bands. The LLM generates questions on-the-fly from common target language vocabulary, adapting based on learner responses to efficiently narrow down the competence boundary. For returning users with prior answer history, the LLM uses that data to refine the estimate. After completing a round of 10, the system displays a provisional level estimate and asks the learner whether they want to continue for greater precision. This iterative refinement continues until the learner is satisfied or the system reaches high confidence. The wizard can also resume from a partial profile if the learner has prior history, allowing for quick updates rather than starting over.
 
 ### 12. Configurable options page
 
@@ -291,7 +300,7 @@ The extension requires an internet connection to function, as all pedagogical in
 
 This ensures users are not confused by non-functional cues and prevents frustration from failed API calls.
 
-### 16. API configuration handling
+### 23. API configuration handling
 
 When API keys are not configured:
 
@@ -335,7 +344,7 @@ The extension automatically detects the language of each page:
 
 This enables seamless switching between passive mode (target language pages) and active mode (native language pages) without user configuration.
 
-### 21. First-run onboarding and calibration wizard
+### 20. First-run onboarding and calibration wizard
 
 On first installation:
 
@@ -346,7 +355,7 @@ On first installation:
 
 Users can re-run calibration anytime from the options page or toolbar popup.
 
-### 20. Non-blocking, fast-loading design
+### 21. Non-blocking, fast-loading design
 
 The extension is designed to never interfere with normal browser usage:
 
@@ -430,7 +439,7 @@ As a learner, I want the wrong answer choices to be realistic and close in meani
 
 ### US-07 — Resolve known items
 
-As a learner, I want correctly answered items to be marked as resolved after answering correctly once, so that I can see progress and reduce repeated interruptions for already learned content.
+As a learner, I want correctly answered items to be marked as resolved after answering correctly once and hidden forever, so that I can see progress and never be interrupted for already mastered content.
 
 ### US-08 — Receive explanation after mistakes
 
@@ -658,27 +667,27 @@ As a user, I want to disable positive feedback, negative feedback, or both, so t
 
 ## AI and System User Stories
 
-### US-56 — Route across providers transparently
+### US-58 — Route across providers transparently
 
 As a product developer, I want AI requests to be routed through ModelMesh, so that the extension is not tightly coupled to a single provider.
 
-### US-57 — Fall back automatically
+### US-59 — Fall back automatically
 
 As a user, I want the extension to keep working even if one AI provider is slow or unavailable, so that the experience remains smooth.
 
-### US-58 — Optimize cost by task type
+### US-60 — Optimize cost by task type
 
 As a product owner, I want different pedagogical subtasks to be sent to different models depending on complexity, so that quality is preserved while controlling cost.
 
-### US-59 — Compare model quality
+### US-61 — Compare model quality
 
 As a product developer, I want to compare outputs from different providers for tasks like distractor generation and explanation quality, so that the system can improve over time.
 
-### US-60 — Handle quotas gracefully
+### US-62 — Handle quotas gracefully
 
 As a user, I want the extension to continue functioning when one provider hits rate or quota limits, so that my learning session is not interrupted.
 
-### US-61 — All decisions driven by LLM
+### US-63 — All decisions driven by LLM
 
 As a system architect, I want all pedagogical reasoning (item selection, distractor generation, explanation, level estimation) to be handled by the LLM layer through appropriate prompting, so that the extension focuses on presentation and interaction while intelligence resides in the AI backend.
 
