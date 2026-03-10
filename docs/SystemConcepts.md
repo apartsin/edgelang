@@ -243,11 +243,11 @@ This prevents frustration from repeated failed API calls and manages expectation
 
 The product can assign different subtasks to different models depending on speed, cost, availability, and output quality requirements.
 
-### 12. Proficiency calibration wizard
+### 13. Proficiency calibration wizard
 
 Before or alongside regular browsing, the system offers a structured assessment flow that quickly narrows down the learner's competence boundary. The wizard presents a sequence of 10 multiple-choice questions drawn from the target language, mixing passive (recognition) and active (recall) formats. Each question targets vocabulary and phrases at different difficulty bands. The LLM generates questions on-the-fly from common target language vocabulary, adapting based on learner responses to efficiently narrow down the competence boundary. For returning users with prior answer history, the LLM uses that data to refine the estimate. After completing a round of 10, the system displays a provisional level estimate and asks the learner whether they want to continue for greater precision. This iterative refinement continues until the learner is satisfied or the system reaches high confidence. The wizard can also resume from a partial profile if the learner has prior history, allowing for quick updates rather than starting over.
 
-### 13. Configurable options page
+### 14. Configurable options page
 
 The extension provides an options page where users configure:
 
@@ -264,7 +264,7 @@ The extension provides an options page where users configure:
 - **Site lists**: blacklist and whitelist modes for site control
 - **Auto-detect page language**: enabled by default, with manual override available via toolbar
 
-### 24. Configurable visual cues
+### 15. Configurable visual cues
 
 The extension provides non-intrusive but clear visual indicators for learnable items. Users can choose from multiple options:
 
@@ -276,7 +276,7 @@ The extension provides non-intrusive but clear visual indicators for learnable i
 
 All cues are designed to be visible enough to notice but not distracting from reading flow. The default is subtle underline with cursor change on hover.
 
-### 25. All intelligence from LLM
+### 16. All intelligence from LLM
 
 Every pedagogical decision is driven by the LLM layer with appropriate prompting:
 
@@ -289,7 +289,7 @@ Every pedagogical decision is driven by the LLM layer with appropriate prompting
 
 The Chrome extension serves primarily as the presentation and interaction layer, while all reasoning, selection, and adaptation logic resides in the LLM backend.
 
-### 26. Browser-local storage
+### 17. Browser-local storage
 
 All user data is stored locally in the browser using chrome.storage. This includes:
 
@@ -303,7 +303,7 @@ No data is sent to external servers. Users can export or clear their data at any
 
 API keys are stored securely in chrome.storage and are never transmitted to any external servers except directly to the AI providers when making LLM requests.
 
-### 27. Offline mode
+### 18. Offline mode
 
 The extension requires an internet connection to function, as all pedagogical intelligence relies on LLM API calls. When offline:
 
@@ -314,7 +314,7 @@ The extension requires an internet connection to function, as all pedagogical in
 
 This ensures users are not confused by non-functional cues and prevents frustration from failed API calls.
 
-### 17. Sensitive content handling
+### 19. Sensitive content handling
 
 The extension automatically ignores sensitive content areas:
 
@@ -326,7 +326,7 @@ The extension automatically ignores sensitive content areas:
 
 This ensures user privacy and prevents the extension from interfering with form interactions.
 
-### 28. API configuration handling
+### 20. API configuration handling
 
 When API keys are not configured:
 
@@ -337,7 +337,7 @@ When API keys are not configured:
 
 This prevents user confusion about why the extension isn't working and guides them to configuration.
 
-### 33. Toolbar icon and popup
+### 21. Toolbar icon and popup
 
 The extension appears as an icon in the Chrome toolbar with a popup that provides:
 
@@ -349,7 +349,7 @@ The extension appears as an icon in the Chrome toolbar with a popup that provide
 
 The toolbar icon also shows visual cues when API keys are not configured (e.g., grayed out or warning icon).
 
-### 29. Site blacklist and whitelist
+### 22. Site blacklist and whitelist
 
 Users can control which sites the extension operates on:
 
@@ -360,7 +360,7 @@ Users can control which sites the extension operates on:
 
 This gives users granular control over where learning opportunities appear.
 
-### 30. Auto-detect page language with manual override
+### 23. Auto-detect page language with manual override
 
 The extension automatically detects the language of each page:
 
@@ -370,7 +370,7 @@ The extension automatically detects the language of each page:
 
 This enables seamless switching between passive mode (target language pages) and active mode (native language pages) without user configuration.
 
-### 31. First-run onboarding and calibration wizard
+### 24. First-run onboarding and calibration wizard
 
 On first installation:
 
@@ -381,7 +381,7 @@ On first installation:
 
 Users can re-run calibration anytime from the options page or toolbar popup.
 
-### 32. Non-blocking, fast-loading design
+### 25. Non-blocking, fast-loading design
 
 The extension is designed to never interfere with normal browser usage:
 
@@ -394,7 +394,7 @@ The extension is designed to never interfere with normal browser usage:
 
 This ensures the extension enhances browsing rather than hindering it.
 
-### 34. Learning statistics dashboard
+### 26. Learning statistics dashboard
 
 The extension provides a learning statistics view accessible from the toolbar popup:
 
@@ -406,7 +406,7 @@ The extension provides a learning statistics view accessible from the toolbar po
 
 This helps learners track their progress and stay motivated.
 
-### 35. Paused/break mode
+### 27. Paused/break mode
 
 Users can pause learning temporarily without disabling the extension:
 
@@ -417,7 +417,7 @@ Users can pause learning temporarily without disabling the extension:
 
 This allows users to take breaks without losing configuration or having to re-enable manually.
 
-### 36. Keyboard shortcuts for power users
+### 28. Keyboard shortcuts for power users
 
 The extension supports keyboard navigation:
 
@@ -429,7 +429,7 @@ The extension supports keyboard navigation:
 
 This improves accessibility and power user workflow.
 
-### 37. LLM error handling
+### 29. LLM error handling
 
 When LLM requests fail during a session:
 
