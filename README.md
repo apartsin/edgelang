@@ -24,13 +24,26 @@ The extension supports passive reading practice, active recall, multiple AI prov
 
 ## Installation
 
+### Download the project
+
+Choose one of these paths:
+
+1. Download the latest release from the GitHub Releases page.
+2. Or clone the repository:
+
+```bash
+git clone https://github.com/ApartsinProjects/edgelang.git
+cd edgelang
+```
+
 ### Load the extension in Chrome
 
-1. Clone or download this repository.
+1. If you downloaded a release ZIP, extract it first.
 2. Open Chrome and go to `chrome://extensions`.
 3. Enable `Developer mode`.
 4. Click `Load unpacked`.
 5. Select the [src](src) folder, not the repository root.
+6. If Chrome reports a missing manifest, you selected the wrong folder.
 
 ### First-time setup
 
@@ -102,6 +115,7 @@ python scripts/generate_readme_banner.py
 ## Notes
 
 - Chrome must load the unpacked extension from [src](src).
+- The latest packaged source is also available from the GitHub Releases page.
 - The extension needs at least one configured AI provider before it can augment pages.
 - If a page shows no cues, open the popup to see the current blocker reason.
 
