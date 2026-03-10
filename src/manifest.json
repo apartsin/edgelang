@@ -3,11 +3,7 @@
   "name": "EdgeLang",
   "version": "0.1.0",
   "description": "AI Chrome Extension for Vocabulary-at-the-Edge Language Learning",
-  "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
-  },
+  "default_locale": "en",
   "background": {
     "service_worker": "background.js",
     "type": "module"
@@ -22,10 +18,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png"
-    }
+    "default_title": "EdgeLang"
   },
   "options_page": "options.html",
   "permissions": [
