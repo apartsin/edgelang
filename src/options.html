@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EdgeLang Settings</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 24px;
+      background: #f5f5f5;
+      color: #333;
+    }
+    
+    h1 {
+      font-size: 24px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .logo {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 8px;
+    }
+    
+    .section {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #667eea;
+    }
+    
+    .form-group {
+      margin-bottom: 16px;
+    }
+    
+    .form-group:last-child {
+      margin-bottom: 0;
+    }
+    
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 6px;
+    }
+    
+    input[type="text"],
+    input[type="password"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+    
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    .input-hint {
+      font-size: 12px;
+      color: #888;
+      margin-top: 4px;
+    }
+    
+    .toggle-group {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .toggle-group:last-child {
+      border-bottom: none;
+    }
+    
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+    }
+    
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: 0.3s;
+      border-radius: 24px;
+    }
+    
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+    
+    .toggle input:checked + .toggle-slider {
+      background-color: #667eea;
+    }
+    
+    .toggle input:checked + .toggle-slider:before {
+      transform: translateX(20px);
+    }
+    
+    .slider-group {
+      padding: 12px 0;
+    }
+    
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    
+    input[type="range"] {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #ddd;
+      appearance: none;
+    }
+    
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #667eea;
+      cursor: pointer;
+    }
+    
+    .radio-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    
+    .radio-option {
+      padding: 8px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    
+    .radio-option.selected {
+      border-color: #667eea;
+      background: #f0f0ff;
+      color: #667eea;
+    }
+    
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+    
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: #5a6fd6;
+    }
+    
+    .btn-secondary {
+      background: white;
+      color: #667eea;
+      border: 1px solid #667eea;
+    }
+    
+    .btn-danger {
+      background: #ff4444;
+      color: white;
+    }
+    
+    .site-list {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    
+    .site-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      background: #f0f0f0;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    
+    .site-tag button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      color: #888;
+    }
+    
+    .notification {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 12px 20px;
+      background: #4CAF50;
+      color: white;
+      border-radius: 8px;
+      font-size: 14px;
+      display: none;
+    }
+    
+    .notification.show {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <h1><div class="logo"></div> EdgeLang Settings</h1>
+  
+  <!-- Languages -->
+  <div class="section">
+    <div class="section-title">Language Settings</div>
+    <div class="form-group">
+      <label>Your Native Language</label>
+      <select id="nativeLanguage">
+        <option value="en">English</option>
+        <option value="es">Español</option>
+        <option value="fr">Français</option>
+        <option value="de">Deutsch</option>
+        <option value="it">Italiano</option>
+        <option value="pt">Português</option>
+        <option value="zh">中文</option>
+        <option value="ja">日本語</option>
+        <option value="ko">한국어</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Target Language (to learn)</label>
+      <select id="targetLanguage">
+        <option value="es">Español</option>
+        <option value="en">English</option>
+        <option value="fr">Français</option>
+        <option value="de">Deutsch</option>
+        <option value="it">Italiano</option>
+        <option value="pt">Português</option>
+        <option value="zh">中文</option>
+        <option value="ja">日本語</option>
+        <option value="ko">한국어</option>
+      </select>
+    </div>
+  </div>
+  
+  <!-- API Keys -->
+  <div class="section">
+    <div class="section-title">API Keys</div>
+    <div class="form-group">
+      <label>OpenAI API Key</label>
+      <input type="password" id="openaiKey" placeholder="sk-...">
+      <div class="input-hint">Get your key from platform.openai.com</div>
+    </div>
+    <div class="form-group">
+      <label>Anthropic API Key</label>
+      <input type="password" id="anthropicKey" placeholder="sk-ant-...">
+      <div class="input-hint">Get your key from console.anthropic.com</div>
+    </div>
+    <div class="form-group">
+      <label>Google API Key</label>
+      <input type="password" id="googleKey" placeholder="Your Google API key">
+      <div class="input-hint">Enable Gemini API in Google Cloud Console</div>
+    </div>
+  </div>
+  
+  <!-- Visual Cues -->
+  <div class="section">
+    <div class="section-title">Visual Cues</div>
+    <div class="form-group">
+      <label>Cue Style</label>
+      <div class="radio-group" id="cueStyle">
+        <div class="radio-option selected" data-value="underline">Underline</div>
+        <div class="radio-option" data-value="background">Background</div>
+        <div class="radio-option" data-value="dot">Corner Dot</div>
+        <div class="radio-option" data-value="border">Border</div>
+      </div>
+    </div>
+    <div class="slider-group">
+      <div class="slider-header">
+        <label>Question Intensity</label>
+        <span id="intensityValue">5%</span>
+      </div>
+      <input type="range" id="questionIntensity" min="1" max="20" value="5">
+      <div class="input-hint">Percentage of words shown as learnable</div>
+    </div>
+    <div class="slider-group">
+      <div class="slider-header">
+        <label>Recall Intensity</label>
+        <span id="recallValue">10%</span>
+      </div>
+      <input type="range" id="recallIntensity" min="0" max="100" value="10">
+      <div class="input-hint">Probability of showing previously learned words</div>
+    </div>
+  </div>
+  
+  <!-- Feedback -->
+  <div class="section">
+    <div class="section-title">Feedback & Gamification</div>
+    <div class="toggle-group">
+      <label>Positive Feedback</label>
+      <label class="toggle">
+        <input type="checkbox" id="positiveFeedback" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="toggle-group">
+      <label>Negative Feedback</label>
+      <label class="toggle">
+        <input type="checkbox" id="negativeFeedback" checked>
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="toggle-group">
+      <label>Audio Pronunciation</label>
+      <label class="toggle">
+        <input type="checkbox" id="audioEnabled">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+  </div>
+  
+  <!-- Site Management -->
+  <div class="section">
+    <div class="section-title">Site Management</div>
+    <div class="form-group">
+      <label>Mode</label>
+      <div class="radio-group" id="siteMode">
+        <div class="radio-option selected" data-value="blacklist">Blacklist (default)</div>
+        <div class="radio-option" data-value="whitelist">Whitelist</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Add Site to List</label>
+      <div class="site-list">
+        <input type="text" id="newSite" placeholder="example.com" style="flex:1;">
+        <button class="btn btn-primary" id="addSite" style="padding: 10px 16px;">Add</button>
+      </div>
+      <div class="input-hint" id="siteListHint"></div>
+    </div>
+  </div>
+  
+  <!-- Data -->
+  <div class="section">
+    <div class="section-title">Data Management</div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="exportData">Export Data</button>
+      <button class="btn btn-danger" id="clearData">Clear All Data</button>
+    </div>
+  </div>
+  
+  <div class="btn-row">
+    <button class="btn btn-primary" id="saveBtn">Save Settings</button>
+  </div>
+  
+  <div class="notification" id="notification">Settings saved!</div>
+  
+  <script src="options.js"></script>
+</body>
+</html>

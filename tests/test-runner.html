@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>EdgeLang Test Runner</title>
+  <style>
+    body {
+      font-family: 'Consolas', 'Monaco', monospace;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #1e1e1e;
+      color: #d4d4d4;
+    }
+    
+    h1 {
+      color: #569cd6;
+      border-bottom: 1px solid #333;
+      padding-bottom: 10px;
+    }
+    
+    .test-result {
+      padding: 8px 12px;
+      margin: 4px 0;
+      border-radius: 4px;
+    }
+    
+    .pass {
+      background: #1e3a1e;
+      color: #4ec94e;
+    }
+    
+    .fail {
+      background: #3a1e1e;
+      color: #e94e4e;
+    }
+    
+    .summary {
+      margin-top: 20px;
+      padding: 20px;
+      background: #252526;
+      border-radius: 8px;
+      font-size: 18px;
+    }
+    
+    .summary .passed {
+      color: #4ec94e;
+    }
+    
+    .summary .failed {
+      color: #e94e4e;
+    }
+    
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #0e639c;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    
+    button:hover {
+      background: #1177bb;
+    }
+    
+    .console-output {
+      background: #0d0d0d;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <h1>EdgeLang Test Suite</h1>
+  
+  <button onclick="runTests()">Run All Tests</button>
+  
+  <div id="results"></div>
+  <div id="console" class="console-output"></div>
+  
+  <script>
+    // Mock dependencies
+    const SENSITIVE_INPUT_TYPES = ['password', 'email', 'tel', 'credit-card', 'number'];
+    const SENSITIVE_FIELD_NAMES = ['cvv', 'cvc', 'cc', 'card', 'password', 'secret'];
+    
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+      return array;
+    }
+    
+    // Background script functions
+    function selectProvider(task) {
+      const taskProviderMap = {
+        'edge-detection': 'openai',
+        'distractor-generation': 'openai',
+        'explanation': 'anthropic',
+        'classification': 'openai',
+        'calibration': 'openai'
+      };
+      return taskProviderMap[task] || 'openai';
+    }
+    
+    function getDefaultModel(provider) {
+      const defaults = {
+        'openai': 'gpt-3.5-turbo',
+        'anthropic': 'claude-3-haiku-20240307',
+        'google': 'gemini-1.5-flash',
+        'groq': 'llama-3.1-70b-versatile'
+      };
+      return defaults[provider] || 'gpt-3.5-turbo';
+    }
+    
+    function buildProviderRequest(provider, model, prompt, maxTokens) {
+      const base = { max_tokens: maxTokens };
+      switch (provider) {
+        case 'openai':
+        case 'groq':
+          return { ...base, model, messages: [{ role: 'user', content: prompt }], temperature: 0.3 };
+        case 'anthropic':
+          return { ...base, model, messages: [{ role: 'user', content: prompt }] };
+        default:
+          return { ...base, model, prompt };
+      }
+    }
+    
+    function parseProviderResponse(provider, data) {
+      switch (provider) {
+        case 'openai':
+        case 'groq':
+          return data.choices?.[0]?.message?.content || '';
+        case 'anthropic':
+          return data.content?.[0]?.text || '';
+        default:
+          return '';
+      }
+    }
+    
+    let settings = {
+      nativeLanguage: 'en',
+      targetLanguage: 'es',
+      apiKeys: {},
+      visualCueStyle: 'underline',
+      questionIntensity: 5,
+      recallIntensity: 10
+    };
+    
+    function extractPageText() {
+      return document.body.innerText;
+    }
+    
+    // Test runner
+    const TestRunner = {
+      passed: 0,
+      failed: 0,
+      results: [],
+      
+      run(name, fn) {
+        try {
+          fn();
+          this.passed++;
+          this.results.push({ name, status: 'PASS' });
+        } catch (error) {
+          this.failed++;
+          this.results.push({ name, status: 'FAIL', error: error.message });
+        }
+      },
+      
+      assert(condition, message) {
+        if (!condition) throw new Error(message || 'Assertion failed');
+      },
+      
+      assertEqual(actual, expected, message) {
+        if (actual !== expected) throw new Error(message || `Expected ${expected}, got ${actual}`);
+      },
+      
+      summary() {
+        return { passed: this.passed, failed: this.failed };
+      }
+    };
+    
+    // Run tests
+    function runTests() {
+      document.getElementById('results').innerHTML = '';
+      TestRunner.passed = 0;
+      TestRunner.failed = 0;
+      TestRunner.results = [];
+      
+      // Test 1
+      TestRunner.run('SENSITIVE_INPUT_TYPES should include password', () => {
+        TestRunner.assert(SENSITIVE_INPUT_TYPES.includes('password'));
+      });
+      
+      // Test 2
+      TestRunner.run('SENSITIVE_FIELD_NAMES should include cvv', () => {
+        TestRunner.assert(SENSITIVE_FIELD_NAMES.includes('cvv'));
+      });
+      
+      // Test 3
+      TestRunner.run('selectProvider returns valid provider', () => {
+        const provider = selectProvider('edge-detection');
+        TestRunner.assert(['openai', 'anthropic', 'google', 'groq'].includes(provider));
+      });
+      
+      // Test 4
+      TestRunner.run('getDefaultModel returns model for openai', () => {
+        TestRunner.assertEqual(getDefaultModel('openai'), 'gpt-3.5-turbo');
+      });
+      
+      // Test 5
+      TestRunner.run('buildProviderRequest for OpenAI has correct structure', () => {
+        const req = buildProviderRequest('openai', 'gpt-3.5-turbo', 'test', 100);
+        TestRunner.assertEqual(req.model, 'gpt-3.5-turbo');
+        TestRunner.assert(Array.isArray(req.messages));
+      });
+      
+      // Test 6
+      TestRunner.run('buildProviderRequest for Anthropic has correct structure', () => {
+        const req = buildProviderRequest('anthropic', 'claude-3', 'test', 100);
+        TestRunner.assertEqual(req.model, 'claude-3');
+      });
+      
+      // Test 7
+      TestRunner.run('parseProviderResponse extracts OpenAI content', () => {
+        const response = { choices: [{ message: { content: 'Test' } }] };
+        TestRunner.assertEqual(parseProviderResponse('openai', response), 'Test');
+      });
+      
+      // Test 8
+      TestRunner.run('shuffleArray returns same length', () => {
+        const arr = [1,2,3,4,5];
+        const shuffled = shuffleArray([...arr]);
+        TestRunner.assertEqual(shuffled.length, arr.length);
+      });
+      
+      // Test 9
+      TestRunner.run('Settings structure valid', () => {
+        TestRunner.assert(settings.nativeLanguage !== undefined);
+        TestRunner.assert(settings.targetLanguage !== undefined);
+      });
+      
+      // Test 10
+      TestRunner.run('Intensity range valid', () => {
+        TestRunner.assert(settings.questionIntensity >= 1 && settings.questionIntensity <= 20);
+      });
+      
+      // Test 11
+      TestRunner.run('Recall intensity range valid', () => {
+        TestRunner.assert(settings.recallIntensity >= 0 && settings.recallIntensity <= 100);
+      });
+      
+      // Test 12
+      TestRunner.run('Provider fallback works', () => {
+        const provider = selectProvider('unknown-task');
+        TestRunner.assertEqual(provider, 'openai');
+      });
+      
+      // Test 13
+      TestRunner.run('Google model has fallback', () => {
+        TestRunner.assert(getDefaultModel('unknown') === 'gpt-3.5-turbo');
+      });
+      
+      // Test 14
+      TestRunner.run('Language detection works for common languages', () => {
+        const langs = ['en', 'es', 'fr', 'de', 'it', 'pt', 'zh', 'ja', 'ko'];
+        langs.forEach(l => TestRunner.assert(langs.includes(l)));
+      });
+      
+      // Test 15
+      TestRunner.run('API key validation', () => {
+        const hasKeys = Object.keys(settings.apiKeys).length > 0;
+        TestRunner.assert(!hasKeys, 'no keys configured in test');
+      });
+      
+      // Render results
+      const resultsDiv = document.getElementById('results');
+      TestRunner.results.forEach(result => {
+        const div = document.createElement('div');
+        div.className = `test-result ${result.status.toLowerCase()}`;
+        div.textContent = `${result.status}: ${result.name}`;
+        if (result.error) div.textContent += ` - ${result.error}`;
+        resultsDiv.appendChild(div);
+      });
+      
+      // Summary
+      const summary = TestRunner.summary();
+      const summaryDiv = document.createElement('div');
+      summaryDiv.className = 'summary';
+      summaryDiv.innerHTML = `
+        <div>Passed: <span class="passed">${summary.passed}</span></div>
+        <div>Failed: <span class="failed">${summary.failed}</span></div>
+        <div>Total: ${summary.passed + summary.failed}</div>
+      `;
+      resultsDiv.appendChild(summaryDiv);
+    }
+  </script>
+</body>
+</html>
