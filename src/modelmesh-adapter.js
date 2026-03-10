@@ -1,67 +1,88 @@
 /**
  * EdgeLang ModelMesh Adapter
  * Lightweight ModelMesh integration for Chrome extension
- * Supports: OpenAI, Anthropic, Google, Groq
+ * Supports: OpenAI, Anthropic, Google, Groq, OpenRouter
  */
 
 const ModelMeshAdapter = {
   clients: {},
   providers: {},
+  providerPool: [],
   
   // Initialize with API keys
   init(apiKeys) {
     this.providers = {};
+    this.providerPool = [];
     
-    if (apiKeys.openai) {
-      this.providers.openai = { apiKey: apiKeys.openai, active: true };
-    }
-    if (apiKeys.anthropic) {
-      this.providers.anthropic = { apiKey: apiKeys.anthropic, active: true };
-    }
-    if (apiKeys.google) {
-      this.providers.google = { apiKey: apiKeys.google, active: true };
-    }
-    if (apiKeys.groq) {
-      this.providers.groq = { apiKey: apiKeys.groq, active: true };
+    const providerConfigs = [
+      { name: 'openai', key: apiKeys.openai, endpoint: 'https://api.openai.com/v1/chat/completions', model: 'gpt-3.5-turbo' },
+      { name: 'anthropic', key: apiKeys.anthropic, endpoint: 'https://api.anthropic.com/v1/messages', model: 'claude-3-haiku-20240307' },
+      { name: 'google', key: apiKeys.google, endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent', model: 'gemini-1.5-flash' },
+      { name: 'groq', key: apiKeys.groq, endpoint: 'https://api.groq.com/openai/v1/chat/completions', model: 'llama-3.1-70b-versatile' },
+      { name: 'openrouter', key: apiKeys.openrouter, endpoint: 'https://openrouter.ai/api/v1/chat/completions', model: 'google/gemini-2.0-flash-001' }
+    ];
+    
+    for (const config of providerConfigs) {
+      if (config.key) {
+        this.providers[config.name] = { ...config, active: true };
+        this.providerPool.push(config.name);
+      }
     }
     
-    console.log('ModelMeshAdapter: Initialized with providers:', Object.keys(this.providers));
+    console.log('ModelMeshAdapter: Initialized with providers:', this.providerPool);
     return this;
   },
   
-  // Create chat completion
+  // Get next available provider from pool (round-robin)
+  getNextProvider() {
+    if (this.providerPool.length === 0) return null;
+    const provider = this.providerPool[0];
+    this.providerPool.push(this.providerPool.shift());
+    return provider;
+  },
+  
+  // Create chat completion with provider pool routing
   async chatCompletionsCreate(params) {
     const { messages, temperature = 0.3, max_tokens = 1000 } = params;
     const prompt = messages[0]?.content || '';
     
-    // Try each provider in order
-    const providerOrder = ['openai', 'groq', 'anthropic', 'google'];
+    const triedProviders = new Set();
+    const maxAttempts = Object.keys(this.providers).length;
     
-    for (const provider of providerOrder) {
-      if (!this.providers[provider] || !this.providers[provider].active) continue;
+    for (let i = 0; i < maxAttempts; i++) {
+      const providerName = this.getNextProvider();
+      if (!providerName || triedProviders.has(providerName)) continue;
+      triedProviders.add(providerName);
+      
+      const provider = this.providers[providerName];
+      if (!provider.active) continue;
       
       try {
-        const response = await this.callProvider(provider, prompt, temperature, max_tokens);
+        console.log(`ModelMeshAdapter: Trying provider ${providerName}`);
+        const response = await this.callProvider(providerName, prompt, temperature, max_tokens);
+        
         return {
           choices: [{
             message: {
               role: 'assistant',
               content: response
             }
-          }]
+          }],
+          provider: providerName
         };
       } catch (error) {
-        console.warn(`ModelMeshAdapter: ${provider} failed:`, error.message);
+        console.warn(`ModelMeshAdapter: ${providerName} failed:`, error.message);
         
-        // Mark provider as inactive if quota/error
-        if (error.status === 429 || error.status >= 500) {
-          this.providers[provider].active = false;
+        // Disable provider on quota/error
+        if (error.status === 429 || error.status >= 500 || error.message.includes('quota')) {
+          provider.active = false;
+          this.providerPool = this.providerPool.filter(p => p !== providerName);
+          console.log(`ModelMeshAdapter: Disabled ${providerName} due to ${error.status || 'error'}`);
         }
-        // Continue to next provider
       }
     }
     
-    throw new Error('All providers failed');
+    throw new Error('All ModelMesh providers failed');
   },
   
   // Call specific provider
@@ -77,6 +98,8 @@ const ModelMeshAdapter = {
         return this.callAnthropic(config.apiKey, prompt, temperature, maxTokens);
       case 'google':
         return this.callGoogle(config.apiKey, prompt, temperature, maxTokens);
+      case 'openrouter':
+        return this.callOpenRouter(config.apiKey, prompt, temperature, maxTokens);
       default:
         throw new Error(`Unknown provider: ${provider}`);
     }
