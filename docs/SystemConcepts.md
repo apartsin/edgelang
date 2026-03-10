@@ -215,7 +215,18 @@ The system remembers prior success, repeated errors, and resolved items to avoid
 
 The learner can request extra examples and short usage notes to support durable understanding.
 
-### 10. Multi-provider AI execution
+### 10. Audio pronunciation support
+
+The extension provides audio pronunciation for target language words:
+
+- **Text-to-speech API**: Uses free-tier TTS services (Google Translate, Microsoft Azure Speech, or similar) to generate pronunciation
+- **On-demand playback**: Click to hear pronunciation of correct answer or selected word
+- **Configurable**: Users can enable/disable pronunciation audio
+- **Caching**: Pronunciations are cached locally to reduce API calls
+
+This helps learners improve listening comprehension and correct pronunciation.
+
+### 11. Multi-provider AI execution
 
 The extension uses ModelMesh TypeScript library to route pedagogical requests across multiple AI providers directly from the browser, with automatic failover and quota management. Because Chrome extensions can make cross-origin API calls, ModelMesh connects to AI providers directly without requiring a CORS proxy.
 
@@ -228,7 +239,7 @@ When all configured providers have exhausted their quotas:
 
 This prevents frustration from repeated failed API calls and manages expectations during quota limits.
 
-### 11. Cost- and reliability-aware inference
+### 12. Cost- and reliability-aware inference
 
 The product can assign different subtasks to different models depending on speed, cost, availability, and output quality requirements.
 
@@ -244,7 +255,7 @@ The extension provides an options page where users configure:
 - **Target language**: the foreign language to learn
 - **AI providers**: API keys for OpenAI, Anthropic, Gemini, Groq, or other ModelMesh-supported providers
 - **Model selection**: which models to use for different tasks (e.g., faster models for classification, smarter models for explanation generation)
-- **Visual cues**: preferred visual cue style (see capability #13)
+- **Visual cues**: preferred visual cue style (see capability #24)
 - **Question intensity**: percentage of words to show visual cues for, relative to page length (e.g., 5% of words per 500 words)
 - **Recall intensity**: probability that already-correctly-answered items reappear for practice (0-100%)
 - **Multiple choice options**: number of choices per question (default 5, range 3-6)
@@ -523,23 +534,23 @@ As a learner, I want the interaction to be lightweight and non-intrusive, so tha
 
 ## Active Mode: Producing Foreign Language from Native Language
 
-### US-11 — Practice active recall during browsing
+### US-12 — Practice active recall during browsing
 
 As a learner reading a page in my native language, I want selected native-language words and phrases to trigger foreign-language translation challenges, so that I can practice production and recall.
 
-### US-12 — Focus on useful production targets
+### US-13 — Focus on useful production targets
 
 As a learner, I want the system to choose native-language prompts that correspond to useful and learnable foreign-language expressions, so that I practice language I am likely to encounter and use.
 
-### US-13 — Learn natural phrasing, not literal translation
+### US-14 — Learn natural phrasing, not literal translation
 
 As a learner, I want feedback when my answer reflects a literal but unnatural translation, so that I can internalize the more idiomatic foreign-language expression.
 
-### US-14 — Compare close alternatives
+### US-15 — Compare close alternatives
 
 As a learner, I want to see why one foreign-language option is more natural, precise, or context-appropriate than another, so that I can improve expressive accuracy.
 
-### US-15 — Reinforce partially known items
+### US-16 — Reinforce partially known items
 
 As a learner, I want the system to revisit items I frequently confuse, so that weak knowledge becomes stable.
 
@@ -547,23 +558,23 @@ As a learner, I want the system to revisit items I frequently confuse, so that w
 
 ## Personalization and Memory
 
-### US-16 — Build a personal learning profile
+### US-17 — Build a personal learning profile
 
 As a learner, I want the system to remember what I answered correctly, incorrectly, or with hesitation (detected via response time), so that future prompts reflect my actual learning history.
 
-### US-17 — Estimate my current boundary
+### US-18 — Estimate my current boundary
 
 As a learner, I want the extension to infer what is at the edge of my ability, so that learning opportunities stay appropriately challenging over time.
 
-### US-18 — Track words and phrases separately
+### US-19 — Track words and phrases separately
 
 As a learner, I want the system to distinguish between knowing a word in isolation and knowing it in a phrase, so that my progress model is more accurate.
 
-### US-19 — Recognize repeated confusion patterns
+### US-20 — Recognize repeated confusion patterns
 
 As a learner, I want the extension to detect the kinds of mistakes I repeatedly make, such as near-synonym confusion or collocation errors, so that feedback becomes more targeted.
 
-### US-20 — Adapt to growth
+### US-21 — Adapt to growth
 
 As a learner, I want the system to gradually stop testing items I have consistently mastered and move to slightly harder material, so that the challenge evolves with me.
 
@@ -571,53 +582,53 @@ As a learner, I want the system to gradually stop testing items I have consisten
 
 ## Proficiency Calibration
 
-### US-20 — Self-assess my level before calibration
+### US-22 — Self-assess my level before calibration
 
 As a new learner, I want to quickly self-assess my proficiency level before the calibration wizard, so that the system can start with a reasonable estimate and reduce the number of questions needed.
 
-### US-21 — Assess my level from scratch
+### US-23 — Assess my level from scratch
 
 As a new learner, I want to answer a structured set of questions upfront so that the system can establish an initial competence estimate without relying on browsing history.
 
-### US-22 — Refine an existing profile
+### US-24 — Refine an existing profile
 
 As a returning learner, I want the option to run a quick calibration that builds on my existing profile rather than starting over, so that I can update my level without redundant questions.
 
-### US-23 — Re-calibrate my level
+### US-25 — Re-calibrate my level
 
 As a learner who wants to reassess my competence, I want to re-run the calibration wizard from scratch to get a fresh level estimate, so that I can reset my profile if I believe it has drifted.
 
-### US-24 — Complete a round of 10 questions
+### US-26 — Complete a round of 10 questions
 
 As a learner, I want each calibration session to consist of exactly 10 questions, so that the assessment is quick and does not feel like a lengthy test.
 
-### US-25 — See provisional results after each round
+### US-27 — See provisional results after each round
 
 As a learner, I want the system to show me a level estimate after every 10 questions, so that I can see how my performance informs the assessment.
 
-### US-26 — Choose to continue or stop
+### US-28 — Choose to continue or stop
 
 As a learner, I want to be asked whether I want to answer another round of 10 questions after seeing my provisional results, so that I control how long the calibration takes.
 
-### US-27 — Experience mixed question types
+### US-29 — Experience mixed question types
 
 As a learner, I want the calibration to include both passive recognition and active recall questions, so that the resulting profile reflects both comprehension and production ability.
 
-### US-28 — Answer questions at varied difficulty bands
+### US-30 — Answer questions at varied difficulty bands
 
 As a learner, I want the calibration to include items spanning easy, moderate, and challenging difficulty, so that the system can precisely locate my competence boundary.
 
-### US-29 — Resume calibration later
+### US-31 — Resume calibration later
 
 As a learner, I want the option to pause and resume a calibration session, so that I can complete it across multiple sittings if needed.
 
 ## Explanation and Pedagogical Support
 
-### US-30 — Explain nuance
+### US-32 — Explain nuance
 
 As a learner, I want explanations to include subtle differences in meaning, register, or usage, so that I develop deeper lexical understanding.
 
-### US-31 — Explain idioms and non-literal meaning
+### US-33 — Explain idioms and non-literal meaning
 
 As a learner, I want the system to explain idiomatic expressions beyond literal translation, so that I can understand authentic language use.
 
@@ -649,35 +660,35 @@ As a learner, I want visual cues to be clear but unobtrusive, so that the page r
 
 As a learner, I want to control how many visual cues are shown on a page, so that the learning density matches my focus and available time.
 
-### US-37 — Switch between passive and active modes
+### US-38 — Switch between passive and active modes
 
 As a learner, I want to switch between recognition-oriented and production-oriented practice, so that I can train both comprehension and recall.
 
-### US-38 — Feel progress over time
+### US-39 — Feel progress over time
 
 As a learner, I want to see that fewer easy visual cues are shown and more relevant edge items are selected over time, so that the system feels personalized and effective.
 
-### US-39 — Handle dynamic page content
+### US-40 — Handle dynamic page content
 
 As a learner, I want the extension to work on single-page applications that dynamically load content, so that I can learn while using modern web apps.
 
-### US-40 — Handle embedded content
+### US-41 — Handle embedded content
 
 As a learner, I want the extension to optionally process content within iframes (such as embedded articles or comments), so that learning opportunities are not limited to main page content.
 
-### US-41 — Ignore sensitive content
+### US-42 — Ignore sensitive content
 
 As a user, I want the extension to automatically ignore password fields, credit card inputs, and other sensitive content, so that my privacy is protected and form interactions are not interrupted.
 
-### US-42 — Configure visual cue style
+### US-43 — Configure visual cue style
 
 As a learner, I want to choose how learnable items are visually indicated (underline, background tint, corner dot, or cursor change), so that the visual cue style matches my reading preferences.
 
-### US-42 — Adjust cue visibility
+### US-44 — Adjust cue visibility
 
 As a learner, I want to control how prominent the visual cues are, so that I can balance visibility against distraction.
 
-### US-43 — Work offline gracefully
+### US-45 — Work offline gracefully
 
 As a learner, I want the extension to detect when I am offline and show a clear status, so that I understand why visual cues are hidden and know when to resume learning.
 
@@ -685,75 +696,75 @@ As a learner, I want the extension to detect when I am offline and show a clear 
 
 ## Configuration and Settings
 
-### US-44 — Set native and target languages
+### US-46 — Set native and target languages
 
 As a new user, I want to specify my native language and the foreign language I want to learn, so that the extension knows which language pair to work with.
 
-### US-45 — Configure API keys
+### US-47 — Configure API keys
 
 As a user, I want to enter API keys for one or more AI providers (OpenAI, Anthropic, Gemini, Groq), so that the extension can make LLM requests.
 
-### US-46 — Select models for different tasks
+### US-48 — Select models for different tasks
 
 As a user, I want to choose which models to use for different operations (fast models for classification, smart models for explanations), so that I can balance speed, cost, and quality.
 
-### US-47 — Control question intensity
+### US-49 — Control question intensity
 
 As a learner, I want to configure what percentage of words on a page show visual cues (e.g., 5% per 500 words), so that the learning density matches my available time and focus.
 
-### US-48 — Control recall intensity
+### US-50 — Control recall intensity
 
 As a learner, I want to configure the probability that already-correctly-answered items reappear for practice (0-100%), so that I can balance review frequency against seeing new content.
 
-### US-49 — Export or clear my data
+### US-51 — Export or clear my data
 
-As a privacy-conscious user, I want to export my learning data or clear it entirely, so that I have control over my personal information.
+As a privacy-conscious user, I want to export my learning data or clear it entirely, so that I have control over my personal information. I also want to export my vocabulary list as a separate file for use in other tools.
 
-### US-50 — Use toolbar popup for quick actions
+### US-52 — Use toolbar popup for quick actions
 
 As a user, I want to click the extension icon in the toolbar to see status, toggle on/off, switch modes, and quickly manage the current site, so that I don't need to open the full options page for common actions.
 
-### US-51 — See toolbar indicator when not configured
+### US-53 — See toolbar indicator when not configured
 
 As a new user, I want the toolbar icon to show a clear visual indicator when API keys are missing, so that I know the extension needs configuration before use.
 
-### US-52 — Blacklist sites I don't want
+### US-54 — Blacklist sites I don't want
 
 As a user, I want to blacklist specific websites so that the extension ignores them, so that learning opportunities only appear where I want them.
 
-### US-53 — Whitelist only specific sites
+### US-55 — Whitelist only specific sites
 
 As a user, I want to switch to whitelist mode so the extension only works on sites I explicitly allow, giving me precise control over where learning happens.
 
-### US-54 — Quickly add/remove site from list
+### US-56 — Quickly add/remove site from list
 
 As a user, I want to add or remove the current site from my blacklist or whitelist with one click from the toolbar popup, so that I can manage site lists without opening options.
 
-### US-55 — Run calibration wizard on first use
+### US-57 — Run calibration wizard on first use
 
 As a new user, I want the calibration wizard to launch automatically after configuration, so that the extension starts with a personalized level estimate.
 
-### US-56 — Get positive feedback on correct answers
+### US-58 — Get positive feedback on correct answers
 
 As a learner, I want to receive encouraging feedback (points, streaks, encouraging messages) when I answer correctly, so that I feel motivated and see my progress.
 
-### US-57 — Get constructive feedback on incorrect answers
+### US-59 — Get constructive feedback on incorrect answers
 
 As a learner, I want to receive constructive feedback when I answer incorrectly (e.g., encouraging messages, explanation), so that I stay motivated to keep trying.
 
-### US-58 — Disable gamification features
+### US-60 — Disable gamification features
 
 As a user, I want to disable positive feedback, negative feedback, or both, so that the learning experience matches my preferences.
 
-### US-59 — View learning statistics
+### US-61 — View learning statistics
 
 As a learner, I want to see my learning progress including items mastered, current streak, and accuracy rate, so that I can track my growth and stay motivated.
 
-### US-60 — Take a learning break
+### US-62 — Take a learning break
 
 As a learner, I want to pause learning temporarily without disabling the extension, so that I can take a break while keeping my settings intact.
 
-### US-61 — Use keyboard shortcuts
+### US-63 — Use keyboard shortcuts
 
 As a power user, I want keyboard shortcuts to navigate and answer quickly, so that I can use the extension more efficiently.
 
@@ -761,31 +772,31 @@ As a power user, I want keyboard shortcuts to navigate and answer quickly, so th
 
 ## AI and System User Stories
 
-### US-59 — Route across providers transparently
+### US-64 — Route across providers transparently
 
 As a product developer, I want AI requests to be routed through ModelMesh, so that the extension is not tightly coupled to a single provider.
 
-### US-60 — Fall back automatically
+### US-65 — Fall back automatically
 
 As a user, I want the extension to keep working even if one AI provider is slow or unavailable, so that the experience remains smooth.
 
-### US-61 — Optimize cost by task type
+### US-66 — Optimize cost by task type
 
 As a product owner, I want different pedagogical subtasks to be sent to different models depending on complexity, so that quality is preserved while controlling cost.
 
-### US-62 — Compare model quality
+### US-67 — Compare model quality
 
 As a product developer, I want to compare outputs from different providers for tasks like distractor generation and explanation quality, so that the system can improve over time.
 
-### US-63 — Handle quotas gracefully
+### US-68 — Handle quotas gracefully
 
 As a user, I want the extension to continue functioning when one provider hits rate or quota limits, so that my learning session is not interrupted.
 
-### US-65 — Handle LLM errors gracefully
+### US-69 — Handle LLM errors gracefully
 
 As a user, I want the extension to handle LLM failures gracefully without showing errors, so that my browsing experience is not interrupted.
 
-### US-66 — All decisions driven by LLM
+### US-70 — All decisions driven by LLM
 
 As a system architect, I want all pedagogical reasoning (item selection, distractor generation, explanation, level estimation) to be handled by the LLM layer through appropriate prompting, so that the extension focuses on presentation and interaction while intelligence resides in the AI backend.
 
