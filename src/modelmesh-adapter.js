@@ -84,6 +84,44 @@ const ModelMeshAdapter = {
     
     throw new Error('All ModelMesh providers failed');
   },
+
+  async audioSpeechCreate(params) {
+    const {
+      input,
+      voice = 'alloy',
+      format = 'mp3',
+      provider: preferredProvider,
+      model
+    } = params;
+    const triedProviders = new Set();
+    const providerQueue = preferredProvider
+      ? [preferredProvider, ...this.providerPool.filter(name => name !== preferredProvider)]
+      : [...this.providerPool];
+
+    for (const providerName of providerQueue) {
+      if (!providerName || triedProviders.has(providerName)) continue;
+      triedProviders.add(providerName);
+
+      const provider = this.providers[providerName];
+      if (!provider?.active) continue;
+
+      try {
+        const result = await this.callSpeechProvider(providerName, input, voice, format, model);
+        return {
+          ...result,
+          provider: providerName
+        };
+      } catch (error) {
+        console.warn(`ModelMeshAdapter TTS: ${providerName} failed:`, error.message);
+        if (error.status === 429 || error.status >= 500 || error.message.includes('quota')) {
+          provider.active = false;
+          this.providerPool = this.providerPool.filter(p => p !== providerName);
+        }
+      }
+    }
+
+    throw new Error('All ModelMesh TTS providers failed');
+  },
   
   // Call specific provider
   async callProvider(provider, prompt, temperature, maxTokens, modelOverride) {
@@ -103,6 +141,32 @@ const ModelMeshAdapter = {
         return this.callOpenRouter(config.apiKey, prompt, temperature, maxTokens, model);
       default:
         throw new Error(`Unknown provider: ${provider}`);
+    }
+  },
+
+  async callSpeechProvider(provider, input, voice, format, modelOverride) {
+    const config = this.providers[provider];
+    if (!config) throw new Error(`Provider ${provider} not configured`);
+    const model = modelOverride || config.ttsModel || 'tts-1';
+
+    switch (provider) {
+      case 'openai':
+        return this.callOpenAITTS('https://api.openai.com/v1/audio/speech', config.apiKey, input, voice, format, model, {});
+      case 'openrouter':
+        return this.callOpenAITTS(
+          'https://openrouter.ai/api/v1/audio/speech',
+          config.apiKey,
+          input,
+          voice,
+          format,
+          model,
+          {
+            'HTTP-Referer': 'https://edgelang.dev',
+            'X-Title': 'EdgeLang'
+          }
+        );
+      default:
+        throw new Error(`Provider ${provider} does not support TTS in this extension`);
     }
   },
   
@@ -207,6 +271,39 @@ const ModelMeshAdapter = {
 
     const data = await response.json();
     return data.choices?.[0]?.message?.content || '';
+  },
+
+  async callOpenAITTS(endpoint, apiKey, input, voice, format, model, extraHeaders = {}) {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        ...extraHeaders
+      },
+      body: JSON.stringify({
+        model,
+        voice,
+        input,
+        format
+      })
+    });
+
+    if (!response.ok) {
+      let message = `HTTP ${response.status}`;
+      try {
+        const error = await response.json();
+        message = error.error?.message || message;
+      } catch {}
+      throw new Error(message);
+    }
+
+    const audioData = new Uint8Array(await response.arrayBuffer());
+    return {
+      audioData,
+      mimeType: format === 'wav' ? 'audio/wav' : 'audio/mpeg',
+      format
+    };
   },
   
   // Get provider status

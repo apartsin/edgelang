@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './helpers/edge-test.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -8,11 +8,12 @@ const EXTENSION_PATH = path.join(__dirname, '..', 'src');
 
 test.describe('EdgeLang Extension - Real Chrome Test', () => {
 
-  test('Extension loads and content script initializes', async ({ browser }) => {
+  test('Extension loads and content script initializes', async ({ browser, registerDebugContext }) => {
     // Load extension using Chrome's debugger protocol
     const context = await browser.newContext({
       launchPersistentContext: '',
     });
+    registerDebugContext(context);
     
     // Create a new page and navigate to test URL
     const page = await context.newPage();

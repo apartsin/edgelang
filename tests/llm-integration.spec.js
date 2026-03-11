@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './helpers/edge-test.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -241,4 +241,3 @@ Respond only with the JSON array, no other text.`;
   });
 
 });
-

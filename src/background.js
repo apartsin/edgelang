@@ -4,6 +4,7 @@
  */
 
 import { ModelMeshAdapter } from './modelmesh-adapter.js';
+import { parseJSONArrayWithRepair } from './json-repair.js';
 
 // State
 let settings = {};
@@ -16,8 +17,7 @@ let iconState = {
   offline: false,
   processing: false
 };
-let processingBadgeInterval = null;
-let processingBadgeVisible = false;
+const tabBadgeState = new Map();
 const DEBUG_LOG_KEY = 'debugLog';
 const DEBUG_LOG_LIMIT = 200;
 const SUPPORTED_LANGUAGE_CODES = [
@@ -25,6 +25,39 @@ const SUPPORTED_LANGUAGE_CODES = [
   'hu', 'id', 'it', 'ja', 'ko', 'nl', 'no', 'pl', 'pt', 'ro', 'ru', 'sk',
   'sr', 'sv', 'th', 'tr', 'uk', 'vi', 'zh'
 ];
+const LANGUAGE_LABELS = {
+  ar: 'Arabic',
+  bg: 'Bulgarian',
+  cs: 'Czech',
+  da: 'Danish',
+  de: 'German',
+  el: 'Greek',
+  en: 'English',
+  es: 'Spanish',
+  fi: 'Finnish',
+  fr: 'French',
+  he: 'Hebrew',
+  hi: 'Hindi',
+  hu: 'Hungarian',
+  id: 'Indonesian',
+  it: 'Italian',
+  ja: 'Japanese',
+  ko: 'Korean',
+  nl: 'Dutch',
+  no: 'Norwegian',
+  pl: 'Polish',
+  pt: 'Portuguese',
+  ro: 'Romanian',
+  ru: 'Russian',
+  sk: 'Slovak',
+  sr: 'Serbian',
+  sv: 'Swedish',
+  th: 'Thai',
+  tr: 'Turkish',
+  uk: 'Ukrainian',
+  vi: 'Vietnamese',
+  zh: 'Chinese'
+};
 const CALIBRATION_BANK = {
   es: [
     { prompt: 'Translate "hola" to English.', choices: ['hello', 'goodbye', 'please', 'thanks'], correctAnswer: 'hello', type: 'passive', difficulty: 'novice' },
@@ -39,6 +72,7 @@ const CALIBRATION_BANK = {
     { prompt: 'How do you say "constraint" in Spanish?', choices: ['restriccion', 'destino', 'hallazgo', 'vinculo'], correctAnswer: 'restriccion', type: 'active', difficulty: 'advanced' }
   ]
 };
+const CALIBRATION_DIFFICULTIES = ['novice', 'beginner', 'intermediate', 'upper-intermediate', 'advanced'];
 
 // Initialize
 async function init() {
@@ -99,6 +133,10 @@ async function loadSettings() {
         multipleChoiceCount: result.multipleChoiceCount || 5,
         positiveFeedback: result.positiveFeedback !== false,
         negativeFeedback: result.negativeFeedback !== false,
+        audioEnabled: result.audioEnabled || false,
+        ttsEngine: result.ttsEngine || 'modelmesh',
+        ttsProvider: result.ttsProvider || 'auto',
+        ttsVoice: result.ttsVoice || 'auto',
         siteMode: result.siteMode || 'blacklist',
         siteList: result.siteList || { blacklist: [], whitelist: [] },
         autoDetectLanguage: result.autoDetectLanguage !== false,
@@ -131,6 +169,8 @@ async function loadLearnerProfile() {
         level: 'intermediate',
         vocabulary: {},
         resolvedItems: [],
+        confusionPatterns: [],
+        recentInteractions: [],
         stats: { totalAnswered: 0, correctAnswers: 0, streak: 0 }
       };
       resolve();
@@ -140,11 +180,11 @@ async function loadLearnerProfile() {
 
 // Handle messages from content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  handleMessage(message).then(sendResponse);
+  handleMessage(message, sender).then(sendResponse);
   return true;
 });
 
-async function handleMessage(message) {
+async function handleMessage(message, sender) {
   await writeDebugLog('background', `message:${message.action}`, sanitizeForLog(message));
   switch (message.action) {
     case 'analyzePage':
@@ -157,7 +197,7 @@ async function handleMessage(message) {
       return await updateStats(message.isCorrect);
       
     case 'updateIconState':
-      updateIconState(message);
+      updateIconState({ ...message, tabId: sender?.tab?.id });
       return { success: true };
       
     case 'getSettings':
@@ -170,7 +210,7 @@ async function handleMessage(message) {
       return await runCalibration(message.answers);
 
     case 'getCalibrationQuestions':
-      return await getCalibrationQuestions(message.selfAssessedLevel);
+      return await getCalibrationQuestions(message.selfAssessedLevel, message.targetLanguage, message.nativeLanguage);
 
     case 'setModePreference':
       await chrome.storage.sync.set({ modePreference: message.modePreference });
@@ -203,6 +243,9 @@ async function handleMessage(message) {
 
     case 'validateApiKeys':
       return await validateApiKeys(message.apiKeys || {}, message.modelSelection || {});
+
+    case 'synthesizeSpeech':
+      return await synthesizeSpeech(message);
 
     case 'debugLog':
       await writeDebugLog(message.entry?.source || 'content', message.entry?.event || 'unknown', message.entry?.details || {});
@@ -314,52 +357,181 @@ async function callManualAPI(prompt) {
 
 // Build prompt for LLM analysis
 function buildAnalysisPrompt(message) {
-  const { text, language, learnerLevel, intensity, mode } = message;
-  
-  const instructions = mode === 'passive' 
-    ? `Analyze this ${language} text and identify ${intensity}% of words/phrases that would be appropriate for a ${learnerLevel} level English learner studying ${language}.`
-    : `Analyze this English text and identify ${intensity}% of common English words/phrases that a ${learnerLevel} ${language} speaker would find useful to learn.`;
+  const {
+    text,
+    textSample,
+    textBlocks,
+    language,
+    nativeLanguage = settings.nativeLanguage || 'en',
+    targetLanguage = settings.targetLanguage || 'es',
+    learnerLevel,
+    intensity,
+    mode
+  } = message;
+
+  const nativeLabel = getLanguageLabel(nativeLanguage);
+  const targetLabel = getLanguageLabel(targetLanguage);
+  const sourceLabel = getLanguageLabel(mode === 'passive'
+    ? (language || targetLanguage)
+    : (language || nativeLanguage));
+  const sampledText = Array.isArray(textBlocks) && textBlocks.length
+    ? textBlocks.map((block) => `[Block ${block.index}] ${block.text}`).join('\n')
+    : (textSample || text || '').substring(0, 12000);
+
+  const instructions = mode === 'passive'
+    ? `Analyze these excerpts from a ${sourceLabel} web page for a ${learnerLevel} ${nativeLabel} speaker studying ${targetLabel}. Select approximately ${intensity}% of words, idiomatic expressions, collocations, or multi-word phrases worth practicing.`
+    : `Analyze these excerpts from a ${sourceLabel} web page for a ${learnerLevel} ${nativeLabel} speaker studying ${targetLabel}. Select approximately ${intensity}% of common words, idiomatic expressions, collocations, or multi-word phrases worth recalling in ${targetLabel}.`;
+  const answerLanguageInstruction = mode === 'passive'
+    ? `Return "displayText" in ${targetLabel}, return "translation" and "correctAnswer" in ${nativeLabel}, and return "nativeMeaning" in ${nativeLabel}.`
+    : `Return "translation", "correctAnswer", and all distractors in ${targetLabel}, and return "nativeMeaning" in ${nativeLabel}.`;
+  const learnerExamples = buildLearnerExamples(mode, nativeLabel, targetLabel);
 
   return `${instructions}
 
+The excerpts were sampled from across the full page, not just the top section.
+${answerLanguageInstruction}
+Use the excerpt context, not a generic dictionary meaning.
+Translate the item according to the meaning it has inside the entire fragment or sentence where it appears, not the isolated word by itself.
+The translation, correctAnswer, and nativeMeaning must all match the same fragment-level sense.
+If a word or expression is polysemous, choose the translation that best matches the exact excerpt where it appears.
+Generate answer alternatives from the in-context meaning of the item.
+Distractors must be plausible in that same context, with a similar part of speech and usage pattern, but still be clearly wrong there.
+Do not use unrelated words, opposites, or generic vocabulary-list distractors that would never fit the excerpt.
+If the full fragment does not make the intended meaning clear, skip that item.
+Return only high-quality entries with non-empty answer choices.
+Whenever possible, assign each entry to the best matching excerpt using its numeric "blockIndex".
+${learnerExamples}
+
 For each identified item, provide:
-1. The word/phrase in the original language
-2. A natural translation
-3. 4 plausible distractors (wrong but educational answers)
+1. The word, idiomatic expression, collocation, or phrase in the original page language
+2. A displayText string for what should appear on the page during practice
+3. A natural in-context translation based on the full excerpt fragment where the item appears
+4. The correct answer for the learner, matching the same fragment-level in-context meaning
+5. A short nativeMeaning in ${nativeLabel} that explains what the item means in this exact fragment
+6. Exactly 4 plausible in-context distractors with non-empty strings
+7. A numeric blockIndex that points to the most relevant page excerpt
+8. A short contextExcerpt copied or lightly trimmed from the matching excerpt so the meaning is anchored to the page usage
+
+${mode === 'active'
+  ? `In active mode, the page will continue showing the original page wording from "text".
+Set "correctAnswer" to the best foreign-language equivalent in ${targetLabel}, and make every distractor another plausible but wrong foreign-language alternative in ${targetLabel}.`
+  : `In passive mode, set "displayText" to the foreign-language equivalent that should appear on the page in ${targetLabel}.
+If the original page wording is already in ${targetLabel}, "displayText" may match "text".
+Set "correctAnswer" to the best answer in ${nativeLabel}, and make every distractor another plausible but wrong answer in ${nativeLabel}.`}
 
 Return as JSON array:
-[{"text": "word", "translation": "translation", "correctAnswer": "translation", "distractors": ["wrong1", "wrong2", "wrong3", "wrong4"]}]
+[{"text":"word","displayText":"word shown on page","translation":"translation","correctAnswer":"translation","nativeMeaning":"meaning in ${nativeLabel}","distractors":["wrong1","wrong2","wrong3","wrong4"],"blockIndex":3,"contextExcerpt":"excerpt showing the usage"}]
 
-Text to analyze:
-${text.substring(0, 8000)}
+Page excerpts:
+${sampledText}
 
 Respond only with valid JSON array, no other text.`;
+  }
+
+function buildLearnerExamples(mode, nativeLabel, targetLabel) {
+  const recentInteractions = Array.isArray(learnerProfile.recentInteractions)
+    ? learnerProfile.recentInteractions.slice(-20)
+    : [];
+  const positiveExamples = recentInteractions
+    .filter((entry) => entry.outcome === 'correct' && typeof entry.text === 'string' && entry.text.trim())
+    .slice(-3)
+    .map((entry) => `- ${entry.text.trim()}`);
+  const negativeExamples = recentInteractions
+    .filter((entry) => entry.outcome === 'incorrect' && typeof entry.text === 'string' && entry.text.trim())
+    .slice(-3)
+    .map((entry) => `- ${entry.text.trim()}`);
+  const resolvedExamples = Array.isArray(learnerProfile.resolvedItems)
+    ? learnerProfile.resolvedItems.slice(-2).map((entry) => `- ${entry}`)
+    : [];
+
+  const sections = [];
+  if (positiveExamples.length || resolvedExamples.length) {
+    sections.push(`Positive few-shot examples from this learner (already handled well, use as a floor for difficulty, style, or topic similarity):
+${[...positiveExamples, ...resolvedExamples].join('\n')}`);
+  }
+  if (negativeExamples.length) {
+    sections.push(`Negative few-shot examples from this learner (recent misses; prioritize items similar in topic or construction, with comparable or slightly higher difficulty):
+${negativeExamples.join('\n')}`);
+    sections.push(`Training guidance: include several candidates that resemble the negative examples in difficulty, idiomaticity, or usage pattern so the learner gets targeted practice above their current weak spots.`);
+  }
+
+  if (!sections.length) {
+    return `Few-shot guidance: no personalized examples yet, so choose broadly useful ${mode === 'passive' ? targetLabel : nativeLabel}-to-${mode === 'passive' ? nativeLabel : targetLabel} practice items around the learner's ${learnerProfile.level || 'intermediate'} level.`;
+  }
+
+  return sections.join('\n\n');
 }
 
 // Parse cues from LLM response
 function parseCuesFromResponse(response, mode) {
   try {
-    const jsonMatch = response.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) {
+    const cues = parseJSONArrayWithRepair(response);
+    if (!cues) {
       console.warn('EdgeLang: No JSON found in response');
       writeDebugLog('background', 'parse:no-json', { mode });
       return [];
     }
-    
-    const cues = JSON.parse(jsonMatch[0]);
-    
-    return cues.filter(cue => 
-      cue.text && 
-      cue.translation && 
-      cue.correctAnswer && 
-      cue.distractors?.length >= 3
-    ).slice(0, 50);
+
+    return cues
+      .map((cue) => normalizeCue(cue))
+      .filter((cue) =>
+        cue.text &&
+        cue.translation &&
+        cue.correctAnswer &&
+        cue.distractors.length >= 3
+      )
+      .slice(0, 50);
     
   } catch (error) {
     console.error('EdgeLang: Parse error:', error);
     writeDebugLog('background', 'parse:error', { message: error.message });
     return [];
   }
+}
+
+function normalizeCue(cue) {
+  const text = typeof cue?.text === 'string' ? cue.text.trim() : '';
+  const displayText = typeof cue?.displayText === 'string' && cue.displayText.trim()
+    ? cue.displayText.trim()
+    : text;
+  const translation = typeof cue?.translation === 'string' ? cue.translation.trim() : '';
+  const correctAnswer = typeof cue?.correctAnswer === 'string' && cue.correctAnswer.trim()
+    ? cue.correctAnswer.trim()
+    : translation;
+  const nativeMeaning = typeof cue?.nativeMeaning === 'string' && cue.nativeMeaning.trim()
+    ? cue.nativeMeaning.trim()
+    : translation;
+  const contextExcerpt = typeof cue?.contextExcerpt === 'string' ? cue.contextExcerpt.trim() : '';
+  const distractors = Array.isArray(cue?.distractors)
+    ? cue.distractors
+      .map((value) => typeof value === 'string' ? value.trim() : '')
+      .filter((value, index, array) =>
+        value &&
+        value !== correctAnswer &&
+        value !== translation &&
+        array.indexOf(value) === index
+      )
+    : [];
+  const blockIndex = Number.isInteger(cue?.blockIndex)
+    ? cue.blockIndex
+    : Number.isFinite(Number(cue?.blockIndex))
+      ? Number(cue.blockIndex)
+      : null;
+
+  return {
+    text,
+    displayText,
+    translation,
+    correctAnswer,
+    nativeMeaning,
+    distractors,
+    blockIndex,
+    contextExcerpt
+  };
+}
+
+function getLanguageLabel(code) {
+  return LANGUAGE_LABELS[code] || code || 'Unknown';
 }
 
 // Detect language
@@ -423,7 +595,8 @@ function selectProvider(task) {
     'distractor-generation': 'openai',
     'explanation': 'anthropic',
     'classification': 'openai',
-    'calibration': 'openai'
+    'calibration': 'openai',
+    'tts': 'openai'
   };
   
   const preferred = taskProviderMap[task] || 'openai';
@@ -446,9 +619,62 @@ function getDefaultModel(provider) {
   return defaults[provider] || 'gpt-3.5-turbo';
 }
 
+function getDefaultTtsModel(provider) {
+  const defaults = {
+    'openai': 'gpt-4o-mini-tts',
+    'openrouter': 'openai/gpt-4o-mini-tts'
+  };
+  return defaults[provider] || getDefaultModel(provider);
+}
+
 function getSelectedModel(task, provider) {
   const selection = settings.modelSelection || {};
   return selection[provider] || selection[task] || getDefaultModel(provider);
+}
+
+function getSelectedTtsModel(provider) {
+  const selection = settings.modelSelection || {};
+  return selection[`${provider}-tts`] || selection.tts || selection[provider] || getDefaultTtsModel(provider);
+}
+
+function selectTtsProvider() {
+  if (settings.ttsProvider && settings.ttsProvider !== 'auto' && settings.apiKeys?.[settings.ttsProvider]) {
+    return settings.ttsProvider;
+  }
+  const candidates = ['openai', 'openrouter'];
+  const configured = Object.keys(settings.apiKeys || {}).filter((provider) => settings.apiKeys[provider]);
+  const preferred = configured.find((provider) => candidates.includes(provider));
+  return preferred || null;
+}
+
+function getTtsVoice(languageCode) {
+  const voiceMap = {
+    ar: 'alloy',
+    de: 'alloy',
+    en: 'alloy',
+    es: 'nova',
+    fr: 'alloy',
+    he: 'nova',
+    hi: 'nova',
+    it: 'alloy',
+    ja: 'nova',
+    ko: 'nova',
+    pt: 'alloy',
+    ru: 'nova',
+    uk: 'nova',
+    zh: 'alloy'
+  };
+  return voiceMap[languageCode] || 'alloy';
+}
+
+function uint8ArrayToBase64(value) {
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let index = 0; index < value.length; index += chunkSize) {
+    const chunk = value.subarray(index, index + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return btoa(binary);
 }
 
 function buildProviderRequest(provider, model, prompt, maxTokens) {
@@ -586,6 +812,82 @@ async function validateApiKeys(apiKeys, modelSelection = {}) {
   }
 }
 
+async function synthesizeSpeech(message) {
+  const input = typeof message.text === 'string' ? message.text.trim() : '';
+  const language = message.language || settings.targetLanguage || 'es';
+  if (!input) {
+    await writeDebugLog('background', 'tts:blocked', { reason: 'missing_text' });
+    return { success: false, error: 'Missing text for pronunciation.' };
+  }
+
+  if (!settings.apiKeysConfigured || !modelMeshClient?.audioSpeechCreate) {
+    await writeDebugLog('background', 'tts:blocked', {
+      reason: settings.apiKeysConfigured ? 'tts_unavailable' : 'api_keys_not_configured'
+    });
+    return { success: false, error: 'ModelMesh TTS is not configured.' };
+  }
+
+  const provider = selectTtsProvider();
+  if (!provider) {
+    await writeDebugLog('background', 'tts:blocked', { reason: 'no_tts_provider' });
+    return { success: false, error: 'No TTS-capable provider configured.' };
+  }
+
+  const model = getSelectedTtsModel(provider);
+  const voice = (message.voice && message.voice !== 'auto')
+    ? message.voice
+    : (settings.ttsVoice && settings.ttsVoice !== 'auto' ? settings.ttsVoice : getTtsVoice(language));
+  const format = message.format || 'mp3';
+
+  try {
+    updateIconState({ processing: true });
+    await writeDebugLog('background', 'tts:start', {
+      provider,
+      model,
+      voice,
+      language,
+      textLength: input.length
+    });
+    const result = await modelMeshClient.audioSpeechCreate({
+      input,
+      voice,
+      format,
+      provider,
+      model
+    });
+    const base64Audio = uint8ArrayToBase64(result.audioData);
+    await writeDebugLog('background', 'tts:success', {
+      provider: result.provider || provider,
+      model,
+      voice,
+      mimeType: result.mimeType,
+      byteLength: result.audioData?.length || 0
+    });
+    return {
+      success: true,
+      provider: result.provider || provider,
+      model,
+      voice,
+      format: result.format || format,
+      mimeType: result.mimeType || 'audio/mpeg',
+      audioBase64: base64Audio
+    };
+  } catch (error) {
+    await writeDebugLog('background', 'tts:error', {
+      provider,
+      model,
+      voice,
+      message: error.message
+    });
+    return {
+      success: false,
+      error: error.message || 'TTS synthesis failed.'
+    };
+  } finally {
+    updateIconState({ processing: false });
+  }
+}
+
 async function writeDebugLog(source, event, details = {}) {
   const entry = {
     timestamp: Date.now(),
@@ -646,24 +948,188 @@ async function updateStats(isCorrect) {
   return { success: true };
 }
 
-async function getCalibrationQuestions(selfAssessedLevel) {
-  const targetLanguage = settings.targetLanguage || 'es';
-  const bank = CALIBRATION_BANK[targetLanguage] || CALIBRATION_BANK.es;
-  const difficultyOrder = ['novice', 'beginner', 'intermediate', 'upper-intermediate', 'advanced'];
-  const anchorIndex = Math.max(0, difficultyOrder.indexOf(selfAssessedLevel || learnerProfile.level || 'intermediate'));
+async function getCalibrationQuestions(selfAssessedLevel, requestedTargetLanguage, requestedNativeLanguage) {
+  const targetLanguage = requestedTargetLanguage || settings.targetLanguage || 'es';
+  const nativeLanguage = requestedNativeLanguage || settings.nativeLanguage || 'en';
+  const calibrationState = getCalibrationStateForLanguage(targetLanguage, nativeLanguage, selfAssessedLevel);
+  const bank = await generateCalibrationBank(targetLanguage, nativeLanguage, calibrationState.anchorDifficulty) || CALIBRATION_BANK[targetLanguage] || CALIBRATION_BANK.es;
+  const anchorIndex = calibrationState.anchorIndex;
   const sortedBank = [...bank].sort((left, right) => {
-    const leftIndex = difficultyOrder.indexOf(left.difficulty);
-    const rightIndex = difficultyOrder.indexOf(right.difficulty);
-    return Math.abs(leftIndex - anchorIndex) - Math.abs(rightIndex - anchorIndex);
+    const leftIndex = getCalibrationDifficultyIndex(left.difficulty);
+    const rightIndex = getCalibrationDifficultyIndex(right.difficulty);
+    const leftScore = Math.abs(leftIndex - anchorIndex) - (leftIndex >= anchorIndex ? 0.25 : 0);
+    const rightScore = Math.abs(rightIndex - anchorIndex) - (rightIndex >= anchorIndex ? 0.25 : 0);
+    return leftScore - rightScore;
   });
   const questions = sortedBank.slice(0, 10).map((question, index) => ({
     ...question,
     id: `${targetLanguage}-${index + 1}`
   }));
+  const roundDifficultyIndex = deriveRoundDifficultyIndex(questions, anchorIndex);
+  const nextRoundDifficultyIndex = Math.min(CALIBRATION_DIFFICULTIES.length - 1, roundDifficultyIndex + 1);
+  await chrome.storage.sync.set({
+    calibrationState: {
+      targetLanguage,
+      nativeLanguage,
+      roundNumber: (calibrationState.roundNumber || 0) + 1,
+      lastRoundDifficultyIndex: roundDifficultyIndex,
+      nextRoundDifficultyIndex,
+      anchorDifficulty: CALIBRATION_DIFFICULTIES[nextRoundDifficultyIndex]
+    }
+  });
+  settings.calibrationState = {
+    targetLanguage,
+    nativeLanguage,
+    roundNumber: (calibrationState.roundNumber || 0) + 1,
+    lastRoundDifficultyIndex: roundDifficultyIndex,
+    nextRoundDifficultyIndex,
+    anchorDifficulty: CALIBRATION_DIFFICULTIES[nextRoundDifficultyIndex]
+  };
+  await writeDebugLog('background', 'calibration:round-generated', {
+    targetLanguage,
+    nativeLanguage,
+    anchorDifficulty: calibrationState.anchorDifficulty,
+    roundDifficulty: CALIBRATION_DIFFICULTIES[roundDifficultyIndex],
+    nextRoundDifficulty: CALIBRATION_DIFFICULTIES[nextRoundDifficultyIndex]
+  });
   return {
     questions,
     targetLanguage,
-    roundSize: questions.length
+    nativeLanguage,
+    roundSize: questions.length,
+    roundDifficulty: CALIBRATION_DIFFICULTIES[roundDifficultyIndex],
+    nextRoundDifficulty: CALIBRATION_DIFFICULTIES[nextRoundDifficultyIndex]
+  };
+}
+
+async function generateCalibrationBank(targetLanguage, nativeLanguage, selfAssessedLevel) {
+  if (!modelMeshClient) {
+    await writeDebugLog('background', 'calibration:bank-fallback', { reason: 'modelmesh_unavailable', targetLanguage });
+    return null;
+  }
+
+  try {
+    const provider = selectProvider('calibration');
+    const model = getSelectedModel('calibration', provider);
+    const prompt = buildCalibrationPrompt(targetLanguage, nativeLanguage, selfAssessedLevel);
+    const result = await modelMeshClient.chatCompletionsCreate({
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.2,
+      max_tokens: 2500,
+      provider,
+      model
+    });
+    const content = result.choices?.[0]?.message?.content || '';
+    const questions = parseCalibrationQuestions(content, targetLanguage);
+    if (questions.length >= 10) {
+      await writeDebugLog('background', 'calibration:bank-generated', { targetLanguage, provider, model, count: questions.length });
+      return questions;
+    }
+    await writeDebugLog('background', 'calibration:bank-fallback', { reason: 'insufficient_generated_questions', targetLanguage, count: questions.length });
+  } catch (error) {
+    await writeDebugLog('background', 'calibration:bank-error', { targetLanguage, message: error.message });
+  }
+
+  return null;
+}
+
+function buildCalibrationPrompt(targetLanguage, nativeLanguage, selfAssessedLevel) {
+  const targetLabel = getLanguageLabel(targetLanguage);
+  const nativeLabel = getLanguageLabel(nativeLanguage || settings.nativeLanguage || 'en');
+  return `Create exactly 10 multiple-choice calibration questions for a ${nativeLabel} speaker studying ${targetLabel}.
+
+Requirements:
+- Mix passive recognition and active recall questions.
+- Mix single words, collocations, and idiomatic expressions.
+- Cover these difficulties: novice, beginner, intermediate, upper-intermediate, advanced.
+- Bias slightly toward ${selfAssessedLevel || learnerProfile.level || 'intermediate'}.
+- Each question must have: prompt, choices (exactly 4 non-empty strings), correctAnswer, type, difficulty, itemKind.
+- For passive questions, the prompt should ask for the meaning of a ${targetLabel} word, idiomatic expression, collocation, or phrase in ${nativeLabel}.
+- For active questions, the prompt should ask how to say a ${nativeLabel} word, idiomatic expression, collocation, or phrase in ${targetLabel}.
+- Use ${nativeLabel} in the explanatory part of prompts unless the prompt is asking about the ${targetLabel} item itself.
+- All prompts and choices must match ${targetLabel} and ${nativeLabel} correctly, not Spanish unless ${targetLabel} is Spanish and not English unless ${nativeLabel} is English.
+
+Return only valid JSON:
+[{"prompt":"...","choices":["...","...","...","..."],"correctAnswer":"...","type":"passive","difficulty":"novice","itemKind":"word"}]`;
+}
+
+function getCalibrationDifficultyIndex(difficulty) {
+  return Math.max(0, CALIBRATION_DIFFICULTIES.indexOf(difficulty || 'intermediate'));
+}
+
+function getCalibrationStateForLanguage(targetLanguage, nativeLanguage, selfAssessedLevel) {
+  const existing = settings.calibrationState;
+  if (
+    existing &&
+    existing.targetLanguage === targetLanguage &&
+    existing.nativeLanguage === nativeLanguage &&
+    Number.isInteger(existing.nextRoundDifficultyIndex)
+  ) {
+    return {
+      ...existing,
+      anchorIndex: existing.nextRoundDifficultyIndex,
+      anchorDifficulty: CALIBRATION_DIFFICULTIES[existing.nextRoundDifficultyIndex] || CALIBRATION_DIFFICULTIES[0]
+    };
+  }
+
+  const fallbackDifficulty = selfAssessedLevel || learnerProfile.level || 'intermediate';
+  const anchorIndex = getCalibrationDifficultyIndex(fallbackDifficulty);
+  return {
+    roundNumber: 0,
+    anchorIndex,
+    anchorDifficulty: CALIBRATION_DIFFICULTIES[anchorIndex]
+  };
+}
+
+function deriveRoundDifficultyIndex(questions, fallbackIndex) {
+  if (!Array.isArray(questions) || !questions.length) {
+    return fallbackIndex;
+  }
+  const averageIndex = questions.reduce((sum, question) => sum + getCalibrationDifficultyIndex(question.difficulty), 0) / questions.length;
+  return Math.max(0, Math.min(CALIBRATION_DIFFICULTIES.length - 1, Math.round(averageIndex)));
+}
+
+function parseCalibrationQuestions(response, targetLanguage) {
+  try {
+    const questions = parseJSONArrayWithRepair(response);
+    if (!questions) return [];
+    return questions
+      .map((question, index) => normalizeCalibrationQuestion(question, targetLanguage, index))
+      .filter((question) => question);
+  } catch {
+    return [];
+  }
+}
+
+function normalizeCalibrationQuestion(question, targetLanguage, index) {
+  const prompt = typeof question?.prompt === 'string' ? question.prompt.trim() : '';
+  const correctAnswer = typeof question?.correctAnswer === 'string' ? question.correctAnswer.trim() : '';
+  const type = question?.type === 'active' ? 'active' : 'passive';
+  const difficulty = ['novice', 'beginner', 'intermediate', 'upper-intermediate', 'advanced'].includes(question?.difficulty)
+    ? question.difficulty
+    : 'intermediate';
+  const itemKind = ['word', 'collocation', 'idiom'].includes(question?.itemKind)
+    ? question.itemKind
+    : 'word';
+  const choices = Array.isArray(question?.choices)
+    ? question.choices
+      .map((choice) => typeof choice === 'string' ? choice.trim() : '')
+      .filter((choice, choiceIndex, array) => choice && array.indexOf(choice) === choiceIndex)
+      .slice(0, 4)
+    : [];
+
+  if (!prompt || !correctAnswer || choices.length !== 4 || !choices.includes(correctAnswer)) {
+    return null;
+  }
+
+  return {
+    id: `${targetLanguage}-${index + 1}`,
+    prompt,
+    choices,
+    correctAnswer,
+    type,
+    difficulty,
+    itemKind
   };
 }
 
@@ -678,17 +1144,57 @@ async function runCalibration(answers) {
   else level = 'novice';
   
   learnerProfile.level = level;
+  const answeredDifficultyIndex = deriveRoundDifficultyIndex(answers, getCalibrationDifficultyIndex(level));
+  const nextRoundDifficultyIndex = Math.min(CALIBRATION_DIFFICULTIES.length - 1, answeredDifficultyIndex + 1);
+  const passiveAnswers = answers.filter((answer) => answer.type === 'passive');
+  const activeAnswers = answers.filter((answer) => answer.type === 'active');
+  const idiomAnswers = answers.filter((answer) => answer.itemKind === 'idiom' || answer.itemKind === 'collocation');
+  const breakdown = {
+    passiveAccuracy: passiveAnswers.length ? passiveAnswers.filter((answer) => answer.correct).length / passiveAnswers.length : 0,
+    activeAccuracy: activeAnswers.length ? activeAnswers.filter((answer) => answer.correct).length / activeAnswers.length : 0,
+    phraseAccuracy: idiomAnswers.length ? idiomAnswers.filter((answer) => answer.correct).length / idiomAnswers.length : 0
+  };
   
   const roundsCompleted = Math.max(1, Math.ceil((answers.length || 0) / 10));
   await chrome.storage.local.set({ 
     learnerProfile,
-    calibrationData: { level, accuracy, roundsCompleted, totalQuestions: answers.length, lastCalibrated: Date.now() }
+    calibrationData: {
+      level,
+      accuracy,
+      roundsCompleted,
+      totalQuestions: answers.length,
+      lastCalibrated: Date.now(),
+      lastRoundDifficulty: CALIBRATION_DIFFICULTIES[answeredDifficultyIndex],
+      nextRoundDifficulty: CALIBRATION_DIFFICULTIES[nextRoundDifficultyIndex],
+      breakdown
+    }
   });
   
-  await chrome.storage.sync.set({ calibrationState: null });
-  settings.calibrationState = null;
+  const preservedState = settings.calibrationState
+    ? {
+        ...settings.calibrationState,
+        lastRoundDifficultyIndex: answeredDifficultyIndex,
+        nextRoundDifficultyIndex,
+        anchorDifficulty: CALIBRATION_DIFFICULTIES[nextRoundDifficultyIndex]
+      }
+    : null;
+  await chrome.storage.sync.set({ calibrationState: preservedState });
+  settings.calibrationState = preservedState;
+  await writeDebugLog('background', 'calibration:round-finished', {
+    level,
+    accuracy,
+    answeredDifficulty: CALIBRATION_DIFFICULTIES[answeredDifficultyIndex],
+    nextRoundDifficulty: CALIBRATION_DIFFICULTIES[nextRoundDifficultyIndex]
+  });
   
-  return { level, accuracy, roundsCompleted, totalQuestions: answers.length };
+  return {
+    level,
+    accuracy,
+    roundsCompleted,
+    totalQuestions: answers.length,
+    nextRoundDifficulty: CALIBRATION_DIFFICULTIES[nextRoundDifficultyIndex],
+    breakdown
+  };
 }
 
 async function toggleCurrentSite(hostname) {
@@ -716,6 +1222,18 @@ async function toggleCurrentSite(hostname) {
 }
 
 function updateIconState(override = {}) {
+  const tabId = Number.isInteger(override.tabId) ? override.tabId : null;
+  if (tabId != null) {
+    const previous = tabBadgeState.get(tabId) || {};
+    tabBadgeState.set(tabId, {
+      ...previous,
+      cueCount: override.cueCount ?? previous.cueCount ?? 0,
+      completed: override.completed ?? previous.completed ?? false,
+      processing: override.processing ?? previous.processing ?? false,
+      stage: override.stage ?? previous.stage ?? null
+    });
+  }
+
   iconState = {
     ...iconState,
     enabled: settings.enabled !== false,
@@ -729,56 +1247,91 @@ function updateIconState(override = {}) {
   const paused = iconState.paused;
   const offline = iconState.offline ?? false;
   const processing = iconState.processing ?? false;
+  const badgeState = tabId != null ? (tabBadgeState.get(tabId) || {}) : {};
+  const stage = override.stage ?? badgeState.stage ?? null;
+  const cueCount = Number.isInteger(override.cueCount)
+    ? override.cueCount
+    : Number.isInteger(badgeState.cueCount)
+      ? badgeState.cueCount
+      : 0;
+  const completed = override.completed ?? badgeState.completed ?? false;
   
   let status = 'active';
   if (!configured) status = 'notconfigured';
-  else if (processing) status = 'processing';
+  else if (processing) status = stage || 'processing';
   else if (offline) status = 'offline';
   else if (paused) status = 'paused';
   else if (!enabled) status = 'disabled';
   
   chrome.action.setTitle({
-    title: `EdgeLang - ${status}`
+    title: completed
+      ? 'EdgeLang - complete'
+      : cueCount > 0
+        ? `EdgeLang - ${cueCount} cues remaining`
+        : `EdgeLang - ${status}`
   });
   
   if (processing) {
-    startProcessingBadgeAnimation();
+    applyProcessingBadgeStage(tabId, stage || 'processing');
     return;
   }
-
-  stopProcessingBadgeAnimation();
   if (!configured) {
-    chrome.action.setBadgeText({ text: '!' });
-    chrome.action.setBadgeBackgroundColor({ color: '#FFA500' });
+    chrome.action.setBadgeText({ text: '!', ...(tabId != null ? { tabId } : {}) });
+    chrome.action.setBadgeBackgroundColor({ color: '#FFA500', ...(tabId != null ? { tabId } : {}) });
   } else if (!enabled) {
-    chrome.action.setBadgeText({ text: 'off' });
-    chrome.action.setBadgeBackgroundColor({ color: '#888' });
+    chrome.action.setBadgeText({ text: 'off', ...(tabId != null ? { tabId } : {}) });
+    chrome.action.setBadgeBackgroundColor({ color: '#888', ...(tabId != null ? { tabId } : {}) });
   } else if (offline) {
-    chrome.action.setBadgeText({ text: '...' });
-    chrome.action.setBadgeBackgroundColor({ color: '#666' });
+    chrome.action.setBadgeText({ text: '...', ...(tabId != null ? { tabId } : {}) });
+    chrome.action.setBadgeBackgroundColor({ color: '#666', ...(tabId != null ? { tabId } : {}) });
   } else if (paused) {
-    chrome.action.setBadgeText({ text: '||' });
-    chrome.action.setBadgeBackgroundColor({ color: '#E6A700' });
+    chrome.action.setBadgeText({ text: '||', ...(tabId != null ? { tabId } : {}) });
+    chrome.action.setBadgeBackgroundColor({ color: '#E6A700', ...(tabId != null ? { tabId } : {}) });
+  } else if (completed) {
+    chrome.action.setBadgeText({ text: '0', ...(tabId != null ? { tabId } : {}) });
+    chrome.action.setBadgeBackgroundColor({ color: '#2BCB7A', ...(tabId != null ? { tabId } : {}) });
+  } else if (cueCount > 0) {
+    chrome.action.setBadgeText({ text: String(Math.min(cueCount, 99)), ...(tabId != null ? { tabId } : {}) });
+    chrome.action.setBadgeBackgroundColor({ color: '#2D6CDF', ...(tabId != null ? { tabId } : {}) });
   } else {
-    chrome.action.setBadgeText({ text: '' });
+    chrome.action.setBadgeText({ text: '', ...(tabId != null ? { tabId } : {}) });
   }
 }
 
-function startProcessingBadgeAnimation() {
-  if (processingBadgeInterval) return;
-  processingBadgeVisible = false;
-  processingBadgeInterval = setInterval(() => {
-    processingBadgeVisible = !processingBadgeVisible;
-    chrome.action.setBadgeText({ text: processingBadgeVisible ? '•' : '' });
-    chrome.action.setBadgeBackgroundColor({ color: processingBadgeVisible ? '#2BCB7A' : '#A7F3D0' });
-  }, 350);
+function canShowProcessingForUrl(url) {
+  return typeof url === 'string' && /^https?:/i.test(url);
 }
 
-function stopProcessingBadgeAnimation() {
-  if (!processingBadgeInterval) return;
-  clearInterval(processingBadgeInterval);
-  processingBadgeInterval = null;
-  processingBadgeVisible = false;
+function shouldAnimateOnPageLoad(url) {
+  return canShowProcessingForUrl(url) &&
+    settings.enabled !== false &&
+    settings.apiKeysConfigured &&
+    !settings.isPaused;
+}
+
+function applyProcessingBadgeStage(tabId = null, stage = 'loading') {
+  const stageConfig = {
+    loading: {
+      text: '•',
+      color: '#2BCB7A'
+    },
+    analyzing: {
+      text: '•',
+      color: '#E6A700'
+    },
+    rendering: {
+      text: '•',
+      color: '#D64545'
+    },
+    processing: {
+      text: '•',
+      color: '#2BCB7A'
+    }
+  };
+  const resolvedStage = stageConfig[stage] ? stage : 'processing';
+  const badge = stageConfig[resolvedStage];
+  chrome.action.setBadgeText({ text: badge.text, ...(tabId != null ? { tabId } : {}) });
+  chrome.action.setBadgeBackgroundColor({ color: badge.color, ...(tabId != null ? { tabId } : {}) });
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -828,6 +1381,29 @@ chrome.commands.onCommand.addListener(async (command) => {
   } else if (command === 'next-cue') {
     chrome.tabs.sendMessage(tab.id, { action: 'focusNextCue' }).catch(() => {});
   }
+});
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'loading') {
+    if (shouldAnimateOnPageLoad(tab?.url)) {
+      tabBadgeState.set(tabId, { cueCount: 0, completed: false, processing: true, stage: 'loading' });
+      updateIconState({ processing: true, offline: false, tabId, cueCount: 0, completed: false, stage: 'loading' });
+    } else if (!canShowProcessingForUrl(tab?.url)) {
+      tabBadgeState.delete(tabId);
+      updateIconState({ processing: false, tabId, cueCount: 0, completed: false });
+    }
+  }
+});
+
+chrome.webNavigation.onBeforeNavigate.addListener((details) => {
+  if (details.frameId !== 0) return;
+  if (!shouldAnimateOnPageLoad(details.url)) return;
+  tabBadgeState.set(details.tabId, { cueCount: 0, completed: false, processing: true, stage: 'loading' });
+  updateIconState({ processing: true, offline: false, tabId: details.tabId, cueCount: 0, completed: false, stage: 'loading' });
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  tabBadgeState.delete(tabId);
 });
 
 init();

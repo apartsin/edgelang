@@ -480,6 +480,54 @@
         <span class="toggle-slider"></span>
       </label>
     </div>
+    <div class="form-group">
+      <label>TTS Engine</label>
+      <select id="ttsEngine">
+        <option value="modelmesh">ModelMesh cloud TTS</option>
+        <option value="browser">Chrome built-in speech</option>
+      </select>
+      <div class="input-hint">Choose between provider-backed pronunciation and the browser voice.</div>
+    </div>
+    <div class="form-group">
+      <label>Preferred TTS Provider</label>
+      <select id="ttsProvider">
+        <option value="auto">Auto-select from configured providers</option>
+        <option value="openai">OpenAI</option>
+        <option value="openrouter">OpenRouter</option>
+      </select>
+    </div>
+    <div class="model-grid">
+      <div class="form-group">
+        <label>OpenAI TTS Model</label>
+        <select id="model-openai-tts">
+          <option value="gpt-4o-mini-tts">GPT-4o mini TTS</option>
+          <option value="gpt-4o-audio-preview">GPT-4o Audio Preview</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>OpenRouter TTS Model</label>
+        <select id="model-openrouter-tts">
+          <option value="openai/gpt-4o-mini-tts">OpenAI GPT-4o mini TTS</option>
+          <option value="openai/gpt-4o-audio-preview">OpenAI GPT-4o Audio Preview</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>TTS Voice</label>
+      <select id="ttsVoice">
+        <option value="auto">Auto by language</option>
+        <option value="alloy">Alloy</option>
+        <option value="ash">Ash</option>
+        <option value="ballad">Ballad</option>
+        <option value="coral">Coral</option>
+        <option value="echo">Echo</option>
+        <option value="fable">Fable</option>
+        <option value="nova">Nova</option>
+        <option value="onyx">Onyx</option>
+        <option value="sage">Sage</option>
+        <option value="shimmer">Shimmer</option>
+      </select>
+    </div>
     <div class="toggle-group">
       <label>Auto-start calibration after setup</label>
       <label class="toggle">

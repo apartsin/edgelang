@@ -3,6 +3,19 @@
  */
 
 document.addEventListener('DOMContentLoaded', async () => {
+  function logUiDebug(event, details = {}) {
+    const entry = {
+      source: 'popup',
+      event,
+      details,
+      timestamp: Date.now()
+    };
+    console.log('EdgeLang UI trace:', entry);
+    window.__edgelangUiDebug = window.__edgelangUiDebug || [];
+    window.__edgelangUiDebug.push(entry);
+    window.__edgelangUiDebug = window.__edgelangUiDebug.slice(-100);
+  }
+
   const statusIndicator = document.getElementById('statusIndicator');
   const statusText = document.getElementById('statusText');
   const enableToggle = document.getElementById('enableToggle');
@@ -22,6 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   let profile = {};
   let currentTab = null;
   let currentPageState = null;
+  logUiDebug('popup:init');
   
   // Load data
   await loadData();
@@ -32,6 +46,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Event listeners
   enableToggle.addEventListener('change', async () => {
     settings.enabled = enableToggle.checked;
+    logUiDebug('popup:toggle-enabled', { enabled: settings.enabled });
     await chrome.storage.sync.set({ enabled: settings.enabled });
     
     // Notify content script
@@ -48,6 +63,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   autoBtn.addEventListener('click', async () => {
     settings.modePreference = 'auto';
+    logUiDebug('popup:set-mode', { modePreference: 'auto' });
     await chrome.runtime.sendMessage({ action: 'setModePreference', modePreference: 'auto' });
     if (currentTab?.id) {
       chrome.tabs.sendMessage(currentTab.id, { action: 'settingsUpdated' }).catch(() => {});
@@ -57,6 +73,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   passiveBtn.addEventListener('click', async () => {
     settings.modePreference = 'passive';
+    logUiDebug('popup:set-mode', { modePreference: 'passive' });
     await chrome.runtime.sendMessage({ action: 'setModePreference', modePreference: 'passive' });
     if (currentTab?.id) {
       chrome.tabs.sendMessage(currentTab.id, { action: 'settingsUpdated' }).catch(() => {});
@@ -66,6 +83,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   activeBtn.addEventListener('click', async () => {
     settings.modePreference = 'active';
+    logUiDebug('popup:set-mode', { modePreference: 'active' });
     await chrome.runtime.sendMessage({ action: 'setModePreference', modePreference: 'active' });
     if (currentTab?.id) {
       chrome.tabs.sendMessage(currentTab.id, { action: 'settingsUpdated' }).catch(() => {});
@@ -75,6 +93,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   pauseToggle.addEventListener('change', async () => {
     settings.isPaused = pauseToggle.checked;
+    logUiDebug('popup:set-paused', { isPaused: settings.isPaused });
     await chrome.runtime.sendMessage({ action: 'setPaused', isPaused: settings.isPaused });
     if (currentTab?.id) {
       chrome.tabs.sendMessage(currentTab.id, {
@@ -88,6 +107,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   toggleSiteButton.addEventListener('click', async () => {
     const hostname = getCurrentHostname();
     if (!hostname) return;
+    logUiDebug('popup:toggle-site', { hostname });
     const response = await chrome.runtime.sendMessage({
       action: 'toggleCurrentSite',
       hostname
@@ -102,14 +122,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   
   document.getElementById('runCalibration').addEventListener('click', () => {
+    logUiDebug('popup:open-calibration');
     chrome.runtime.sendMessage({ action: 'openCalibration' });
   });
   
   document.getElementById('openOptions').addEventListener('click', () => {
+    logUiDebug('popup:open-options');
     chrome.runtime.openOptionsPage();
   });
 
   document.getElementById('viewStats').addEventListener('click', async () => {
+    logUiDebug('popup:view-stats');
     await chrome.runtime.openOptionsPage();
   });
   
@@ -120,6 +143,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         settings.apiKeysConfigured = Object.keys(syncData.apiKeys || {}).length > 0;
         settings.modePreference = syncData.modePreference || 'auto';
         settings.isPaused = syncData.isPaused || false;
+        logUiDebug('popup:data-loaded', {
+          enabled: settings.enabled,
+          configured: settings.apiKeysConfigured,
+          modePreference: settings.modePreference,
+          isPaused: settings.isPaused
+        });
         
         chrome.storage.local.get(['learnerProfile'], (localData) => {
           profile = localData.learnerProfile || {
@@ -127,6 +156,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             resolvedItems: [],
             stats: { totalAnswered: 0, correctAnswers: 0, streak: 0 }
           };
+          logUiDebug('popup:profile-loaded', {
+            level: profile.level,
+            resolvedCount: profile.resolvedItems?.length || 0
+          });
           resolve();
         });
       });
@@ -181,6 +214,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (currentTab?.id) {
         chrome.tabs.sendMessage(currentTab.id, { action: 'getPageState' }).then((pageState) => {
           currentPageState = pageState || null;
+          logUiDebug('popup:page-state', pageState || {});
           if (!pageState) return;
           const blocker = pageState.blockerReason ? ` • Reason: ${pageState.blockerReason}` : '';
           const processing = pageState.processing ? ' • Processing...' : '';
@@ -188,6 +222,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           updateStatusUI();
         }).catch(() => {
           currentPageState = null;
+          logUiDebug('popup:page-state-error', { tabId: currentTab.id });
           pageMeta.textContent = `Mode: ${settings.modePreference}`;
         });
       } else {
@@ -205,6 +240,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function updateStatusUI() {
+    logUiDebug('popup:status-update', {
+      enabled: settings.enabled,
+      configured: settings.apiKeysConfigured,
+      processing: currentPageState?.processing || false,
+      blockerReason: currentPageState?.blockerReason || null
+    });
     if (!settings.apiKeysConfigured) {
       statusIndicator.className = 'status-indicator status-warning';
       statusText.textContent = 'Not configured';

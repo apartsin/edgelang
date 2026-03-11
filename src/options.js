@@ -36,7 +36,21 @@ const SUPPORTED_LANGUAGES = [
   { code: 'zh', label: 'Chinese' }
 ];
 
+function logUiDebug(event, details = {}) {
+  const entry = {
+    source: 'options',
+    event,
+    details,
+    timestamp: Date.now()
+  };
+  console.log('EdgeLang UI trace:', entry);
+  window.__edgelangUiDebug = window.__edgelangUiDebug || [];
+  window.__edgelangUiDebug.push(entry);
+  window.__edgelangUiDebug = window.__edgelangUiDebug.slice(-150);
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+  logUiDebug('options:init');
   populateLanguageSelects();
   // Load settings
   await loadSettings();
@@ -90,6 +104,11 @@ async function loadSettings() {
   return new Promise((resolve) => {
     chrome.storage.sync.get(null, (result) => {
       settings = result;
+      logUiDebug('options:settings-loaded', {
+        nativeLanguage: result.nativeLanguage || 'en',
+        targetLanguage: result.targetLanguage || 'es',
+        configuredProviders: Object.keys(result.apiKeys || {})
+      });
       
       // Languages
       document.getElementById('nativeLanguage').value = settings.nativeLanguage || 'en';
@@ -106,6 +125,8 @@ async function loadSettings() {
       document.getElementById('model-google').value = settings.modelSelection?.google || 'gemini-1.5-flash';
       document.getElementById('model-groq').value = settings.modelSelection?.groq || 'llama-3.1-70b-versatile';
       document.getElementById('model-openrouter').value = settings.modelSelection?.openrouter || 'google/gemini-2.0-flash-001';
+      document.getElementById('model-openai-tts').value = settings.modelSelection?.['openai-tts'] || 'gpt-4o-mini-tts';
+      document.getElementById('model-openrouter-tts').value = settings.modelSelection?.['openrouter-tts'] || 'openai/gpt-4o-mini-tts';
       
       // Visual
       selectRadio('cueStyle', settings.visualCueStyle || 'underline');
@@ -120,6 +141,9 @@ async function loadSettings() {
       document.getElementById('positiveFeedback').checked = settings.positiveFeedback !== false;
       document.getElementById('negativeFeedback').checked = settings.negativeFeedback !== false;
       document.getElementById('audioEnabled').checked = settings.audioEnabled || false;
+      document.getElementById('ttsEngine').value = settings.ttsEngine || 'modelmesh';
+      document.getElementById('ttsProvider').value = settings.ttsProvider || 'auto';
+      document.getElementById('ttsVoice').value = settings.ttsVoice || 'auto';
       document.getElementById('autoStartCalibration').checked = settings.autoStartCalibration !== false;
       document.getElementById('autoDetectLanguage').checked = settings.autoDetectLanguage !== false;
       
@@ -149,7 +173,9 @@ async function saveSettings() {
       anthropic: document.getElementById('model-anthropic').value,
       google: document.getElementById('model-google').value,
       groq: document.getElementById('model-groq').value,
-      openrouter: document.getElementById('model-openrouter').value
+      openrouter: document.getElementById('model-openrouter').value,
+      'openai-tts': document.getElementById('model-openai-tts').value,
+      'openrouter-tts': document.getElementById('model-openrouter-tts').value
     },
     visualCueStyle: getSelectedValue('cueStyle'),
     highlightColor: document.getElementById('highlightColor').value,
@@ -159,11 +185,20 @@ async function saveSettings() {
     positiveFeedback: document.getElementById('positiveFeedback').checked,
     negativeFeedback: document.getElementById('negativeFeedback').checked,
     audioEnabled: document.getElementById('audioEnabled').checked,
+    ttsEngine: document.getElementById('ttsEngine').value,
+    ttsProvider: document.getElementById('ttsProvider').value,
+    ttsVoice: document.getElementById('ttsVoice').value,
     autoStartCalibration: document.getElementById('autoStartCalibration').checked,
     autoDetectLanguage: document.getElementById('autoDetectLanguage').checked,
     siteMode: getSelectedValue('siteMode'),
     siteList: settings.siteList || { blacklist: [], whitelist: [] }
   };
+  logUiDebug('options:save-start', {
+    nativeLanguage: newSettings.nativeLanguage,
+    targetLanguage: newSettings.targetLanguage,
+    cueStyle: newSettings.visualCueStyle,
+    ttsEngine: newSettings.ttsEngine
+  });
   
   // Remove empty API keys
   Object.keys(newSettings.apiKeys).forEach(key => {
@@ -172,6 +207,10 @@ async function saveSettings() {
   
   await chrome.storage.sync.set(newSettings);
   settings = { ...settings, ...newSettings };
+  logUiDebug('options:save-complete', {
+    configuredProviders: Object.keys(newSettings.apiKeys),
+    siteMode: newSettings.siteMode
+  });
   
   showNotification('Settings saved!');
   
@@ -215,7 +254,9 @@ function getModelSelectionFromForm() {
     anthropic: document.getElementById('model-anthropic').value,
     google: document.getElementById('model-google').value,
     groq: document.getElementById('model-groq').value,
-    openrouter: document.getElementById('model-openrouter').value
+    openrouter: document.getElementById('model-openrouter').value,
+    'openai-tts': document.getElementById('model-openai-tts').value,
+    'openrouter-tts': document.getElementById('model-openrouter-tts').value
   };
 }
 
@@ -226,6 +267,7 @@ async function validateKeys() {
   const modelSelection = getModelSelectionFromForm();
 
   if (Object.keys(apiKeys).length === 0) {
+    logUiDebug('options:validate-keys-empty');
     renderValidationResults([{ provider: 'none', valid: false, message: 'Enter at least one API key first.' }]);
     return;
   }
@@ -234,10 +276,16 @@ async function validateKeys() {
   button.textContent = 'Validating...';
 
   try {
+    logUiDebug('options:validate-keys-start', {
+      providers: Object.keys(apiKeys)
+    });
     const response = await chrome.runtime.sendMessage({
       action: 'validateApiKeys',
       apiKeys,
       modelSelection
+    });
+    logUiDebug('options:validate-keys-complete', {
+      resultCount: response?.results?.length || 0
     });
 
     renderValidationResults(response?.results || [{
@@ -251,6 +299,7 @@ async function validateKeys() {
       showNotification('Validation finished');
     }
   } catch (error) {
+    logUiDebug('options:validate-keys-error', { message: error.message });
     renderValidationResults([{
       provider: 'unknown',
       valid: false,
@@ -274,6 +323,7 @@ function renderValidationResults(results) {
 }
 
 function exportData() {
+  logUiDebug('options:export-data');
   chrome.storage.sync.get(null, (syncData) => {
     chrome.storage.local.get(null, (localData) => {
       const payload = {
@@ -293,6 +343,7 @@ function exportData() {
 }
 
 function exportVocabulary() {
+  logUiDebug('options:export-vocabulary');
   chrome.storage.local.get(['learnerProfile'], (data) => {
     const vocabulary = data.learnerProfile?.vocabulary || {};
     const rows = Object.entries(vocabulary).map(([term, stats]) => ({
@@ -313,6 +364,7 @@ function exportVocabulary() {
 
 function clearData() {
   if (confirm('Are you sure you want to clear all learning data? This cannot be undone.')) {
+    logUiDebug('options:clear-data');
     chrome.storage.local.clear(() => {
       chrome.storage.sync.clear(() => {
         settings = {};
@@ -333,6 +385,7 @@ function addSite() {
   settings.siteList = settings.siteList || { blacklist: [], whitelist: [] };
   
   if (!settings.siteList[mode].includes(site)) {
+    logUiDebug('options:add-site', { site, mode });
     settings.siteList[mode].push(site);
     chrome.storage.sync.set({ siteList: settings.siteList });
   }
@@ -342,6 +395,7 @@ function addSite() {
 }
 
 function removeSite(site, mode) {
+  logUiDebug('options:remove-site', { site, mode });
   settings.siteList = settings.siteList || { blacklist: [], whitelist: [] };
   settings.siteList[mode] = settings.siteList[mode].filter(s => s !== site);
   chrome.storage.sync.set({ siteList: settings.siteList });
@@ -354,13 +408,26 @@ function updateSiteList() {
   const hint = document.getElementById('siteListHint');
   
   if (sites.length === 0) {
-    hint.innerHTML = 'No sites in ' + mode;
+    hint.textContent = 'No sites in ' + mode;
     return;
   }
-  
-  hint.innerHTML = sites.map(s => 
-    `<span class="site-tag">${s} <button onclick="removeSite('${s}', '${mode}')">&times;</button></span>`
-  ).join(' ');
+
+  hint.innerHTML = '';
+  sites.forEach((site) => {
+    const tag = document.createElement('span');
+    tag.className = 'site-tag';
+    tag.append(document.createTextNode(`${site} `));
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = '×';
+    button.setAttribute('aria-label', `Remove ${site} from ${mode}`);
+    button.addEventListener('click', () => removeSite(site, mode));
+
+    tag.appendChild(button);
+    hint.appendChild(tag);
+    hint.append(document.createTextNode(' '));
+  });
 }
 
 function setupRadioGroup(groupId, settingKey) {
@@ -393,33 +460,53 @@ function showNotification(message) {
 }
 
 async function startCalibration() {
+  const selectedTargetLanguage = document.getElementById('targetLanguage').value;
+  const selectedNativeLanguage = document.getElementById('nativeLanguage').value;
+  logUiDebug('options:calibration-start', {
+    targetLanguage: selectedTargetLanguage,
+    nativeLanguage: selectedNativeLanguage
+  });
   if (calibrationSession) {
+    if (calibrationSession.targetLanguage !== selectedTargetLanguage || calibrationSession.nativeLanguage !== selectedNativeLanguage) {
+      calibrationSession = null;
+      chrome.storage.local.remove(['calibrationProgress']);
+      document.getElementById('startCalibration').textContent = 'Start Calibration';
+    } else {
     document.getElementById('calibrationIntro').style.display = 'none';
     document.getElementById('calibrationResult').style.display = 'none';
     document.getElementById('calibrationWizard').style.display = 'block';
     renderCalibrationQuestion();
     return;
+    }
   }
 
   const selfAssessedLevel = document.getElementById('selfAssessedLevel').value;
   const response = await chrome.runtime.sendMessage({
     action: 'getCalibrationQuestions',
-    selfAssessedLevel
+    selfAssessedLevel,
+    targetLanguage: selectedTargetLanguage,
+    nativeLanguage: selectedNativeLanguage
   });
   const questions = response?.questions || [];
   if (!questions.length) {
+    logUiDebug('options:calibration-empty');
     showNotification('No calibration questions available.');
     return;
   }
 
   calibrationSession = {
     targetLanguage: response.targetLanguage,
+    nativeLanguage: response.nativeLanguage || selectedNativeLanguage,
     selfAssessedLevel: document.getElementById('selfAssessedLevel').value,
     questions,
     answers: [],
     currentIndex: 0
   };
   persistCalibrationProgress();
+  logUiDebug('options:calibration-questions', {
+    roundSize: questions.length,
+    roundDifficulty: response?.roundDifficulty || null
+  });
 
   document.getElementById('calibrationIntro').style.display = 'none';
   document.getElementById('calibrationResult').style.display = 'none';
@@ -428,6 +515,7 @@ async function startCalibration() {
 }
 
 function stopCalibration() {
+  logUiDebug('options:calibration-stop');
   document.getElementById('calibrationWizard').style.display = 'none';
   document.getElementById('calibrationIntro').style.display = 'block';
   document.getElementById('calibrationResult').style.display = 'none';
@@ -465,6 +553,11 @@ function renderCalibrationQuestion() {
 
 function submitCalibrationAnswer(choice) {
   const question = calibrationSession.questions[calibrationSession.currentIndex];
+  logUiDebug('options:calibration-answer', {
+    questionId: question.id,
+    selectedAnswer: choice,
+    expectedAnswer: question.correctAnswer
+  });
   calibrationSession.answers.push({
     questionId: question.id,
     type: question.type,
@@ -483,13 +576,21 @@ async function finishCalibration() {
     action: 'runCalibration',
     answers: calibrationSession.answers
   });
+  logUiDebug('options:calibration-complete', {
+    level: result?.level,
+    accuracy: result?.accuracy,
+    totalQuestions: result?.totalQuestions
+  });
 
   document.getElementById('calibrationWizard').style.display = 'none';
   document.getElementById('calibrationResult').style.display = 'block';
   document.getElementById('calibrationLevel').textContent =
     `Estimated level: ${capitalize(result.level)}`;
+  const breakdownSummary = result.breakdown
+    ? ` Passive ${Math.round((result.breakdown.passiveAccuracy || 0) * 100)}%, active ${Math.round((result.breakdown.activeAccuracy || 0) * 100)}%, phrases ${Math.round((result.breakdown.phraseAccuracy || 0) * 100)}%.`
+    : '';
   document.getElementById('calibrationSummary').textContent =
-    `${Math.round(result.accuracy * 100)}% accuracy across ${result.totalQuestions} questions.`;
+    `${Math.round(result.accuracy * 100)}% accuracy across ${result.totalQuestions} questions.${breakdownSummary} Next round target: ${capitalize(result.nextRoundDifficulty || result.level)}.`;
   calibrationSession = null;
   chrome.storage.local.remove(['calibrationProgress']);
   updateCalibrationSummary();
@@ -500,8 +601,11 @@ function updateCalibrationSummary() {
     if (!result.calibrationData) return;
     document.getElementById('calibrationLevel').textContent =
       `Estimated level: ${capitalize(result.calibrationData.level)}`;
+    const breakdownSummary = result.calibrationData.breakdown
+      ? ` Passive ${Math.round((result.calibrationData.breakdown.passiveAccuracy || 0) * 100)}%, active ${Math.round((result.calibrationData.breakdown.activeAccuracy || 0) * 100)}%, phrases ${Math.round((result.calibrationData.breakdown.phraseAccuracy || 0) * 100)}%.`
+      : '';
     document.getElementById('calibrationSummary').textContent =
-      `${Math.round((result.calibrationData.accuracy || 0) * 100)}% accuracy in the last round.`;
+      `${Math.round((result.calibrationData.accuracy || 0) * 100)}% accuracy in the last round.${breakdownSummary} Next round target: ${capitalize(result.calibrationData.nextRoundDifficulty || result.calibrationData.level)}.`;
   });
 }
 
@@ -523,6 +627,11 @@ async function loadStatistics() {
       document.getElementById('statsLastActive').textContent = stats.lastActive
         ? new Date(stats.lastActive).toLocaleDateString()
         : 'Never';
+      logUiDebug('options:statistics-loaded', {
+        mastered: profile.resolvedItems?.length || 0,
+        totalAnswered: stats.totalAnswered || 0,
+        vocabularySize: Object.keys(vocabulary).length
+      });
       resolve();
     });
   });
@@ -532,10 +641,23 @@ async function loadCalibrationProgress() {
   return new Promise((resolve) => {
     chrome.storage.local.get(['calibrationProgress'], (result) => {
       calibrationSession = result.calibrationProgress || null;
-      if (calibrationSession) {
+      logUiDebug('options:calibration-progress-loaded', {
+        hasProgress: Boolean(calibrationSession)
+      });
+      const selectedTargetLanguage = document.getElementById('targetLanguage').value;
+      const selectedNativeLanguage = document.getElementById('nativeLanguage').value;
+      if (
+        calibrationSession &&
+        calibrationSession.targetLanguage === selectedTargetLanguage &&
+        (calibrationSession.nativeLanguage || selectedNativeLanguage) === selectedNativeLanguage
+      ) {
         document.getElementById('startCalibration').textContent = 'Resume Calibration';
         document.getElementById('calibrationIntro').querySelector('.input-hint').textContent =
           `Resume your saved round at question ${calibrationSession.currentIndex + 1} of ${calibrationSession.questions.length}.`;
+      } else if (calibrationSession) {
+        calibrationSession = null;
+        chrome.storage.local.remove(['calibrationProgress']);
+        document.getElementById('startCalibration').textContent = 'Start Calibration';
       }
       resolve();
     });
@@ -550,6 +672,3 @@ function persistCalibrationProgress() {
 function capitalize(value) {
   return value ? value.charAt(0).toUpperCase() + value.slice(1) : '';
 }
-
-// Make removeSite available globally
-window.removeSite = removeSite;

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './helpers/edge-test.js';
 
 test.describe('EdgeLang E2E - CNN User Interaction', () => {
 

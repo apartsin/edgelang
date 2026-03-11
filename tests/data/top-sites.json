@@ -1,0 +1,22 @@
+[
+  { "rank": 1, "domain": "google.com", "url": "https://www.google.com/intl/en/about/", "source": "Similarweb February 2026", "notes": "About page on primary domain" },
+  { "rank": 2, "domain": "youtube.com", "url": "https://www.youtube.com/about/", "source": "Similarweb February 2026", "notes": "Public about page" },
+  { "rank": 3, "domain": "facebook.com", "url": "https://www.facebook.com/privacy/policy/", "source": "Similarweb February 2026", "notes": "Public policy page with long-form text" },
+  { "rank": 4, "domain": "instagram.com", "url": "https://www.instagram.com/about/us/", "source": "Similarweb February 2026", "notes": "Public about page" },
+  { "rank": 5, "domain": "chatgpt.com", "url": "https://chatgpt.com/", "source": "Similarweb February 2026", "notes": "Homepage" },
+  { "rank": 6, "domain": "x.com", "url": "https://x.com/en", "source": "Similarweb February 2026", "notes": "Public marketing page" },
+  { "rank": 7, "domain": "reddit.com", "url": "https://www.reddit.com/r/technology/", "source": "Similarweb February 2026", "notes": "Public subreddit page" },
+  { "rank": 8, "domain": "wikipedia.org", "url": "https://en.wikipedia.org/wiki/Wikipedia", "source": "Similarweb February 2026", "notes": "Article page" },
+  { "rank": 9, "domain": "whatsapp.com", "url": "https://www.whatsapp.com/", "source": "Similarweb February 2026", "notes": "Homepage" },
+  { "rank": 10, "domain": "bing.com", "url": "https://www.bing.com/", "source": "Similarweb February 2026", "notes": "Homepage" },
+  { "rank": 11, "domain": "tiktok.com", "url": "https://www.tiktok.com/about", "source": "Similarweb February 2026", "notes": "Public about page" },
+  { "rank": 12, "domain": "yahoo.co.jp", "url": "https://www.yahoo.co.jp/", "source": "Similarweb February 2026", "notes": "Homepage" },
+  { "rank": 13, "domain": "yandex.ru", "url": "https://yandex.ru/company/", "source": "Similarweb February 2026", "notes": "Public company page" },
+  { "rank": 14, "domain": "yahoo.com", "url": "https://www.yahoo.com/", "source": "Similarweb February 2026", "notes": "Homepage" },
+  { "rank": 15, "domain": "amazon.com", "url": "https://www.amazon.com/amazonprime", "source": "Similarweb February 2026", "notes": "Public Amazon Prime landing page with long-form copy" },
+  { "rank": 16, "domain": "baidu.com", "url": "https://www.baidu.com/", "source": "Similarweb February 2026", "notes": "Homepage" },
+  { "rank": 17, "domain": "linkedin.com", "url": "https://www.linkedin.com/company/linkedin", "source": "Similarweb February 2026", "notes": "Public company page" },
+  { "rank": 18, "domain": "netflix.com", "url": "https://www.netflix.com/tudum", "source": "Similarweb February 2026", "notes": "Public editorial page on primary domain" },
+  { "rank": 19, "domain": "naver.com", "url": "https://www.naver.com/", "source": "Similarweb February 2026", "notes": "Homepage" },
+  { "rank": 20, "domain": "temu.com", "url": "https://www.temu.com/", "source": "Similarweb February 2026", "notes": "Homepage" }
+]

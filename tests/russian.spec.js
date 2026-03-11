@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './helpers/edge-test.js';
 
 test.describe('EdgeLang on CNN with Russian content', () => {
 

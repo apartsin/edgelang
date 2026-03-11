@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "EdgeLang",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "AI Chrome Extension for Vocabulary-at-the-Edge Language Learning",
   "default_locale": "en",
   "background": {
@@ -35,7 +35,8 @@
     "storage",
     "activeTab",
     "scripting",
-    "tabs"
+    "tabs",
+    "webNavigation"
   ],
   "host_permissions": [
     "<all_urls>"

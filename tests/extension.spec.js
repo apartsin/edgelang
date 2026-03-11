@@ -1,6 +1,7 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './helpers/edge-test.js';
 import fs from 'fs';
 import path from 'path';
+import { parseJSONArrayWithRepair } from '../src/json-repair.js';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -880,11 +881,13 @@ test.describe('EdgeLang Chrome Extension', () => {
 
 For each identified item, provide:
 1. The word/phrase in the original language
-2. A natural translation
-3. 4 plausible distractors
+2. A natural in-context translation based on the full excerpt fragment where the item appears
+3. The correct answer must match the same fragment-level meaning
+4. 4 plausible in-context distractors
+5. A short contextExcerpt
 
 Return as JSON array:
-[{"text": "word", "translation": "translation", "correctAnswer": "translation", "distractors": ["wrong1", "wrong2", "wrong3", "wrong4"]}]
+[{"text": "word", "translation": "translation", "correctAnswer": "translation", "distractors": ["wrong1", "wrong2", "wrong3", "wrong4"], "contextExcerpt": "excerpt showing the usage"}]
 
 Text to analyze:
 El gato está en la casa.
@@ -892,19 +895,37 @@ El gato está en la casa.
 Respond only with valid JSON array, no other text.`;
 
       expect(prompt).toContain('JSON array');
+      expect(prompt).toContain('in-context');
+      expect(prompt).toContain('fragment');
+      expect(prompt).toContain('contextExcerpt');
       expect(prompt).toContain('distractors');
     });
 
     test('TC-LLM-004: Response parsing from LLM', async ({ page }) => {
       await page.goto('data:text/html,<html><body></body></html>');
       
-      const responseText = `[{"text": "gato", "translation": "cat", "correctAnswer": "cat", "distractors": ["dog", "bird", "fish", "horse"]}]`;
+      const responseText = `[{"text": "gato", "translation": "cat", "correctAnswer": "cat", "distractors": ["dog", "bird", "fish", "horse"], "contextExcerpt": "El gato está en la casa."}]`;
 
       const parsed = JSON.parse(responseText);
       
       expect(parsed[0].text).toBe('gato');
       expect(parsed[0].translation).toBe('cat');
       expect(parsed[0].distractors).toHaveLength(4);
+      expect(parsed[0].contextExcerpt).toContain('gato');
+    });
+
+    test('TC-LLM-004b: Response repair tolerates truncated arrays and code fences', async ({ page }) => {
+      await page.goto('data:text/html,<html><body></body></html>');
+
+      const fenced = '```json\n[{"text":"gato","translation":"cat","correctAnswer":"cat","distractors":["dog","bird","fish","horse"]}]\n```';
+      const parsedFenced = parseJSONArrayWithRepair(fenced);
+      expect(parsedFenced).toHaveLength(1);
+      expect(parsedFenced[0].text).toBe('gato');
+
+      const truncated = '[{"text":"gato","translation":"cat","correctAnswer":"cat","distractors":["dog","bird","fish","horse"]},{"text":"perro","translation":"dog';
+      const parsedTruncated = parseJSONArrayWithRepair(truncated);
+      expect(parsedTruncated).toHaveLength(1);
+      expect(parsedTruncated[0].text).toBe('gato');
     });
 
     test('TC-LLM-005: Multiple provider support', async ({ page }) => {

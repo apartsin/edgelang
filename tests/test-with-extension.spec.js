@@ -1,8 +1,9 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './helpers/edge-test.js';
 import { chromium } from 'playwright';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import os from 'os';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -10,7 +11,7 @@ const EXTENSION_PATH = path.resolve(__dirname, '..', 'src');
 
 test.describe('EdgeLang Extension - Verification', () => {
 
-  test('Extension loads in Chrome with ModelMesh integration', async ({ browser }) => {
+  test('Extension loads in Chrome with ModelMesh integration', async ({ registerDebugContext }) => {
     const extPath = EXTENSION_PATH;
     
     // 1. Verify extension files
@@ -21,12 +22,15 @@ test.describe('EdgeLang Extension - Verification', () => {
     console.log('Extension:', manifest.name, 'v' + manifest.version);
     
     // 2. Launch Chrome with extension
-    const browser2 = await chromium.launch({
+    const userDataDir = path.join(os.tmpdir(), `edgelang-extension-${Date.now()}`);
+    const context = await chromium.launchPersistentContext(userDataDir, {
+      headless: false,
       args: [`--disable-extensions-except=${extPath}`, `--load-extension=${extPath}`],
     });
+    registerDebugContext(context);
     
     // 3. Create page and verify extension structure
-    const page = await browser2.newPage();
+    const page = await context.newPage();
     
     await page.goto('data:text/html,<html><body><h1>Test</h1></body></html>');
     
@@ -47,7 +51,7 @@ test.describe('EdgeLang Extension - Verification', () => {
     expect(bgContent).not.toContain("from './modelmesh-dist/browser.js'");
     expect(bgContent).toContain('modelMeshClient');
     
-    await browser2.close();
+    await context.close();
     
     console.log('\n=== Extension Verified ===');
     console.log('The extension IS loaded in Chrome with the browser-safe adapter.');

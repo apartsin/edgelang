@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './helpers/edge-test.js';
 
 const VOCABULARY_ITEMS = [
   { text: 'president', translation: 'leader', distractors: ['manager', 'teacher', 'doctor'] },
