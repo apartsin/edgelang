@@ -38,6 +38,7 @@
             finds words and phrases close to your level, and overlays lightweight prompts that keep you moving
             through real content instead of pushing you into a separate study app.
           </p>
+          <p class="section-intro">Current release: <code>0.1.1</code></p>
           <div class="cta-row">
             <a class="btn btn-primary" href="#install">Install in Chrome</a>
             <a class="btn btn-secondary" href="manual.html">Open User Manual</a>
@@ -72,6 +73,7 @@
             <li>Turn on <code>Developer mode</code>.</li>
             <li>Click <code>Load unpacked</code>.</li>
             <li>Select the <code>src</code> folder in this repository.</li>
+            <li>Open the options page, add a provider key, validate it, and choose your languages.</li>
           </ol>
         </article>
         <article class="content-card">
@@ -118,7 +120,36 @@
         </article>
         <article class="content-card">
           <h3>Visible progress state</h3>
-          <p>The toolbar and popup now show when page analysis is processing so long-running LLM calls feel transparent.</p>
+          <p>The toolbar and popup show steady loading, analyzing, and rendering states so long-running page analysis feels transparent.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Release 0.1.1</h2>
+          <p class="section-intro">
+            This release strengthens extraction on sparse and div-heavy pages and adds real browser compatibility coverage against a curated top-20 global site list.
+          </p>
+        </div>
+      </div>
+      <div class="grid-2">
+        <article class="content-card">
+          <h3>What improved</h3>
+          <ul>
+            <li>Better fallback extraction for generic, sparse, and dynamic layouts</li>
+            <li>Stronger popup, logging, parsing, and toolbar-state behavior</li>
+            <li>Expanded regression coverage for page handling and settings flows</li>
+          </ul>
+        </article>
+        <article class="content-card">
+          <h3>Verification</h3>
+          <ul>
+            <li><code>npm test</code> passes for the main suite</li>
+            <li><code>EDGE_LANG_LIVE_SITES=1 npm run test:live-sites</code> runs the live browser compatibility suite</li>
+            <li>The live-site run currently reports 19 compatible sites and 1 attached-only outlier</li>
+          </ul>
         </article>
       </div>
     </section>
@@ -207,10 +238,10 @@
         </article>
         <article class="doc-card">
           <div>
-            <h3>Source Folder</h3>
-            <p>Load the extension from <code>src</code> when installing it in Chrome.</p>
+            <h3>Release Tests</h3>
+            <p>Use the repository test commands for the full regression suite and the opt-in live top-site run.</p>
           </div>
-          <a href="../src/">Open source folder</a>
+          <a href="../README.md">View test commands</a>
         </article>
       </div>
     </section>

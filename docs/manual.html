@@ -91,7 +91,14 @@
           <article class="manual-block" id="toolbar">
             <h2>Toolbar and Popup</h2>
             <p>The popup gives you fast access to enable or disable the extension, switch modes, pause learning, manage the current site, open statistics, and launch settings.</p>
-            <p>While a page is being analyzed, the toolbar shows a flashing badge dot and the popup displays <code>Processing...</code>.</p>
+            <p>While a page is being analyzed, the toolbar uses steady badge states and the popup displays <code>Processing...</code>.</p>
+            <ul>
+              <li>Green badge while the page is loading</li>
+              <li>Yellow badge while content is being sent to the model</li>
+              <li>Red badge while highlights are being rendered</li>
+              <li>A number for the remaining highlights after augmentation</li>
+              <li><code>0</code> when all highlights on the page are resolved</li>
+            </ul>
             <p>If no cues appear, the popup also shows a blocker reason such as <code>api_keys_not_configured</code>, <code>site_disabled</code>, <code>paused</code>, or <code>insufficient_text</code>.</p>
           </article>
 
@@ -134,6 +141,7 @@
               <li>Wait for dynamic sites to finish hydrating if you just opened a page like a news site.</li>
               <li>Use the popup blocker reason if the page still shows no cues.</li>
             </ul>
+            <p>For release verification, the repository now also includes an opt-in live browser compatibility suite for a curated list of 20 top sites.</p>
             <p>For the Markdown version of this document, see <a href="USER_MANUAL.md">USER_MANUAL.md</a>.</p>
           </article>
         </div>

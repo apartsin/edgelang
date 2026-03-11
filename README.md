@@ -6,6 +6,8 @@ EdgeLang is a Chrome extension that turns ordinary browsing into contextual lang
 
 The extension supports passive reading practice, active recall, multiple AI providers, progress tracking, calibration, configurable cue styling, and browser-first routing through [ModelMesh](https://modelmesh.tech/).
 
+Current release: `0.1.1`
+
 ## Why EdgeLang
 
 - Learn from real pages instead of artificial drills
@@ -20,6 +22,7 @@ The extension supports passive reading practice, active recall, multiple AI prov
 - [System Concepts](docs/SystemConcepts.md)
 - [Software Requirements](docs/SoftwareRequirements.md)
 - [Test Plan](docs/TestPlan.md)
+- [GitHub Pages Site](docs/index.html)
 - [ModelMesh Project](https://modelmesh.tech/)
 
 ## Installation
@@ -59,7 +62,7 @@ cd edgelang
 
 EdgeLang uses a content script to extract visible page text, a background service worker to coordinate AI analysis, and popup/options pages for controls and configuration. AI routing is handled through a local adapter layer designed around ModelMesh-style provider selection and failover.
 
-When a page is being analyzed, the extension now exposes progress through the toolbar state and popup status so the experience is less opaque while the model is working.
+When a page is being analyzed, the extension exposes progress through steady toolbar states and popup status so the experience is less opaque while the model is working.
 
 ## Features
 
@@ -71,6 +74,7 @@ When a page is being analyzed, the extension now exposes progress through the to
 - API key validation
 - Configurable highlight color and cue style
 - Toolbar processing indicator and blocker reasons
+- Live browser compatibility coverage against a curated top-20 site list
 - Progress statistics and vocabulary export
 
 ## Development
@@ -104,6 +108,14 @@ scripts/
 npm test
 ```
 
+### Run the live top-site compatibility suite
+
+```bash
+EDGE_LANG_LIVE_SITES=1 npm run test:live-sites
+```
+
+This launches the real MV3 extension in Chromium and checks the extension flow across a curated set of 20 high-traffic public sites.
+
 ### Regenerate the README banner
 
 The banner was generated with Gemini using the local environment key.
@@ -118,6 +130,12 @@ python scripts/generate_readme_banner.py
 - The latest packaged source is also available from the GitHub Releases page.
 - The extension needs at least one configured AI provider before it can augment pages.
 - If a page shows no cues, open the popup to see the current blocker reason.
+- The toolbar uses steady state badges:
+  - green while loading
+  - yellow while sending/analyzing
+  - red while rendering highlights
+  - count of remaining highlights after augmentation
+  - `0` when all highlights on the page are resolved
 
 ## License
 
